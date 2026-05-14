@@ -21,9 +21,13 @@ this folder turns it into a real, deployable system.
       — self-critique + cross-model + fact-anchor → approve / reject /
       needs_review. Implements DEPLOYMENT.md §3 Layer 2.
 
+- [x] **End-to-end content pipeline CLI** (`cli/generate-questions.js`)
+      — parse → generate → validate, with per-question decisions, cost,
+      and a 95%-bar warning when the batch is below the DEPLOYMENT §3
+      threshold.
+
 ## What's next (in order)
 
-- [ ] CLI to test generator + validator end-to-end (`cli/generate-questions.js`)
 - [ ] Mastery engine (`services/mastery-engine.js`)
 - [ ] Parent report renderer (`services/report-renderer.js`)
 - [ ] LINE webhook handler (`api/line.js`)
@@ -87,6 +91,15 @@ See `../DEPLOYMENT.md` for phase-by-phase plan.
 5. Test the syllabus parser:
    ```bash
    node cli/parse-syllabus.js samples/science-7-syllabus.txt
+   ```
+6. Run the full content pipeline (parse → generate → validate):
+   ```bash
+   # See available concepts
+   node cli/generate-questions.js samples/science-7-syllabus.txt --list
+
+   # Generate + validate for one concept
+   node cli/generate-questions.js samples/science-7-syllabus.txt \
+     --concept cell_membrane --count 5 --verbose
    ```
 
 You should see structured JSON output and a small cost estimate.
