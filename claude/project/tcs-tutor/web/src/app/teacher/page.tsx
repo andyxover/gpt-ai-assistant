@@ -38,7 +38,7 @@ export default async function TeacherHome() {
         >
           <h2 className="font-semibold mb-1">Classes</h2>
           <p className="text-sm text-stone-600">
-            Enroll students, see mastery across the roster.
+            Week-by-week progress, student activity, roster.
           </p>
         </a>
         <a
