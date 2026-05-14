@@ -37,10 +37,13 @@ this folder turns it into a real, deployable system.
       `cli/render-report.js`) — deterministic data + AI narrative on
       top + EN/ZH labels. Plain text and minimal HTML output, optional
       persistence into `parent_reports`.
+- [x] **LINE webhook handler** (`api/server.js` + `api/line.js` +
+      `cli/replay-webhook.js`) — signature-verified webhook, mode
+      selection, MCQ practice loop with quick-reply buttons, attempt
+      recording, flagging, session lifecycle. Dry-run mode lets you
+      exercise the bot end-to-end without a live LINE channel.
 
 ## What's next (in order)
-
-- [ ] LINE webhook handler (`api/line.js`)
 - [ ] LINE webhook handler (`api/line.js`)
 - [ ] Teacher dashboard (separate Next.js subapp)
 - [ ] Eval harness (`evals/`)
@@ -134,6 +137,26 @@ See `../DEPLOYMENT.md` for phase-by-phase plan.
    # Deterministic (no AI narrative) — free, useful for diff testing
    node cli/render-report.js --week 5 --skip-narrative
    ```
+9. Run the LINE bot locally (dry-run mode — outbound LINE calls are
+   logged to stdout instead of being POSTed):
+   ```bash
+   # Link the demo student to a fake LINE user id
+   psql $DATABASE_URL -c "UPDATE users SET line_user_id='U_DEMO' WHERE id='00000000-0000-0000-0000-000000000020';"
+
+   # In one terminal: start the server
+   LINE_API_DRY_RUN=true npm run dev
+
+   # In another terminal: replay events
+   node cli/replay-webhook.js text "review" --user-id U_DEMO
+   node cli/replay-webhook.js mode review  --user-id U_DEMO
+   # Copy the qid + session UUIDs from the dry-run log, then:
+   node cli/replay-webhook.js answer <qid> B <session> --user-id U_DEMO
+   node cli/replay-webhook.js next <session> --user-id U_DEMO
+   ```
+
+For live deployment, point a LINE channel's webhook at
+`https://<your-host>/webhook/line`, set `LINE_API_DRY_RUN=false`, and
+fill in `LINE_CHANNEL_SECRET` + `LINE_CHANNEL_ACCESS_TOKEN` in `.env`.
 
 You should see structured JSON output and a small cost estimate.
 
