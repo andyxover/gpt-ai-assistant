@@ -294,6 +294,69 @@
 
   .empty-illust { display: grid; place-items: center; padding: 36px; color: var(--text-dim); font-size: 13px; }
 
+  /* ============ Adaptive mastery panel (left of chat) ============ */
+  .chat-layout { display: grid; grid-template-columns: 280px 1fr; min-height: 540px; }
+  .chat-right { display: flex; flex-direction: column; min-width: 0; }
+  .chat-right .chat-body { flex: 1; max-height: none; min-height: 380px; }
+
+  .mastery-panel {
+    border-right: 1px solid var(--border);
+    background: var(--surface-2);
+    padding: 18px 16px;
+    overflow-y: auto;
+  }
+  .mastery-header {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--text-dim); text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .mastery-header::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .mastery-summary { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.55; }
+  .mastery-summary strong { color: var(--text); font-weight: 600; }
+  .mastery-summary .focus-name { color: var(--accent); }
+  .mastery-row { margin-bottom: 14px; position: relative; padding-left: 10px; transition: padding-left .25s ease; }
+  .mastery-row::before {
+    content: ""; position: absolute; left: 0; top: 5px; bottom: 5px; width: 2px; border-radius: 2px;
+    background: transparent; transition: background .25s ease;
+  }
+  .mastery-row.focus { padding-left: 14px; }
+  .mastery-row.focus::before { background: var(--accent); }
+  .mastery-row.focus .name::after {
+    content: "← AI 鎖定"; font-family: var(--font-mono); font-size: 10px;
+    color: var(--accent); margin-left: 6px; letter-spacing: 0.04em;
+    animation: focusPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes focusPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+  .mastery-label { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 5px; }
+  .mastery-label .name { font-weight: 500; color: var(--text); }
+  .mastery-label .pct { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+  .mastery-bar-bg { height: 6px; background: var(--border-soft); border-radius: 3px; overflow: hidden; }
+  .mastery-bar { height: 100%; border-radius: 3px; transition: width .8s cubic-bezier(0.4, 0.0, 0.2, 1), background .3s ease; }
+  .mastery-row.low  .mastery-bar { background: var(--danger); }
+  .mastery-row.mid  .mastery-bar { background: var(--warn); }
+  .mastery-row.high .mastery-bar { background: var(--success); }
+  .mastery-row.bump .mastery-bar { box-shadow: 0 0 0 3px rgba(46,125,91,.20); }
+
+  .session-end {
+    padding: 16px; margin-top: 12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    font-size: 13px;
+  }
+  .session-end .big { font-size: 22px; font-weight: 600; margin: 6px 0; }
+  .session-end .row { margin-top: 8px; }
+
+  .delta-toast {
+    display: inline-block; margin-left: 6px;
+    font-family: var(--font-mono); font-size: 10px;
+    padding: 1px 5px; border-radius: 3px;
+    opacity: 0; transform: translateY(-2px);
+    transition: opacity .4s ease, transform .4s ease;
+  }
+  .delta-toast.up { background: #e8f4ee; color: var(--success); }
+  .delta-toast.down { background: #fbeaec; color: var(--danger); }
+  .delta-toast.show { opacity: 1; transform: translateY(0); }
+
   /* ============ Help bubble ============ */
   .help {
     position: fixed; right: 24px; bottom: 24px; z-index: 100;
@@ -312,6 +375,8 @@
     .sidebar { display: none; }
     .main { padding: 20px; }
     .grid-2, .grid-3, .action-cards { grid-template-columns: 1fr; }
+    .chat-layout { grid-template-columns: 1fr; }
+    .mastery-panel { border-right: 0; border-bottom: 1px solid var(--border); max-height: 260px; }
   }
 </style>
 </head>
@@ -580,11 +645,21 @@
           <span class="spacer"></span>
           <button class="btn ghost close" id="close-chat">關閉</button>
         </div>
-        <div class="chat-body" id="chat-body"></div>
-        <div class="chat-input">
-          <span class="scope-note">📌 範圍鎖定</span>
-          <input type="text" id="chat-input" placeholder="問我關於細胞的問題⋯⋯" />
-          <button class="btn" id="chat-send">送出</button>
+        <div class="chat-layout">
+          <aside class="mastery-panel" id="mastery-panel">
+            <div class="mastery-header">理解度追蹤 Mastery</div>
+            <div class="mastery-summary" id="mastery-summary">準備開始⋯⋯</div>
+            <div id="mastery-list"></div>
+            <div id="session-end-wrap"></div>
+          </aside>
+          <div class="chat-right">
+            <div class="chat-body" id="chat-body"></div>
+            <div class="chat-input">
+              <span class="scope-note">範圍鎖定</span>
+              <input type="text" id="chat-input" placeholder="問我關於細胞的問題⋯⋯" />
+              <button class="btn" id="chat-send">送出</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -791,133 +866,451 @@ document.getElementById('close-chat').addEventListener('click', () => {
   chatWrap.classList.add('hidden');
 });
 
-const SCRIPTS = {
+// ====================================================================
+// Mode configuration — concept maps + initial mastery (per Mr. Lin's class)
+// ====================================================================
+const MODE_CONFIG = {
   review: {
     scope: '範圍：第二章 §3 細胞構造（本週）',
     placeholder: '問我關於細胞的問題⋯⋯',
-    turns: [
-      { role: 'ai', text: '嗨小明！我們來複習這週林老師上的「細胞構造與功能」。先用一個簡單的問題暖身：' },
-      { role: 'ai', quiz: {
-        q: '下列何者不是動物細胞與植物細胞「共同」具備的構造？',
-        opts: [
-          { letter: 'A', text: '細胞膜' },
-          { letter: 'B', text: '細胞核' },
-          { letter: 'C', text: '細胞壁', correct: true, why: '細胞壁是植物細胞特有的構造（由纖維素組成），動物細胞並沒有細胞壁，所以才會比較柔軟。' },
-          { letter: 'D', text: '細胞質' }
-        ]
-      }}
-    ]
-  },
-  preview: {
-    scope: '範圍：第二章 §4 細胞分裂（下週）',
-    placeholder: '想知道下週要學什麼？',
-    turns: [
-      { role: 'ai', text: '下週林老師會教「細胞分裂」。先給你一個圖像式的預習：' },
-      { role: 'ai', text: '想像你的身體現在大約有 30 兆個細胞，但你出生時只有少少幾兆個。多出來的這 20 幾兆，全都是靠 <code>細胞分裂</code> 一個變兩個、兩個變四個⋯⋯這樣慢慢長出來的。' },
-      { role: 'ai', text: '下週的重點會放在：<br>• 為什麼細胞要分裂？（生長 · 修復 · 繁殖）<br>• 分裂的基本步驟（先複製，再分開）<br>• 單細胞生物 vs 多細胞生物的差別<br><br>不需要先背，先有畫面就好，上課就更容易跟上。要不要先做兩題暖身？' }
+    intro: '嗨小明！我們來複習這週林老師上的「細胞構造與功能」。<br><br>左邊是你目前對每個小概念的理解度 — 我會優先針對你比較弱的部分出題，幫你補強到 80% 以上。',
+    maxQuestions: 8,
+    concepts: [
+      { id: 'membrane',   name: '細胞膜',           mastery: 58 },
+      { id: 'nucleus',    name: '細胞核',           mastery: 72 },
+      { id: 'wall',       name: '細胞壁（植物特徵）', mastery: 42 },
+      { id: 'organelles', name: '葉綠體與粒線體',    mastery: 35 },
+      { id: 'compare',    name: '動植物細胞比較',    mastery: 50 }
     ]
   },
   exam: {
     scope: '範圍：第一章 + 第二章（第一次段考）',
     placeholder: '想練段考考古題？',
-    turns: [
-      { role: 'ai', text: '距離第一次段考還有 18 天。我看了你最近的練習，你在「細胞構造」這部分比較需要加強，我們從這裡開始。' },
-      { role: 'ai', text: '先做一題段考常見題型：' },
-      { role: 'ai', quiz: {
-        q: '阿明在顯微鏡下看到一個有「細胞壁」、「葉綠體」、「液胞」的細胞。請問這最可能是下列何者？',
-        opts: [
-          { letter: 'A', text: '人類紅血球' },
-          { letter: 'B', text: '青蛙皮膚細胞' },
-          { letter: 'C', text: '洋蔥根尖細胞', correct: true, why: '有細胞壁＋葉綠體＋液胞，三個都是「植物細胞」的特徵。動物細胞（A、B）沒有細胞壁，細菌（D）雖然有細胞壁但沒有葉綠體或細胞核。' },
-          { letter: 'D', text: '大腸桿菌' }
-        ]
-      }}
+    intro: '距離第一次段考還有 18 天。<br><br>左邊顯示你對段考各概念的掌握度。我會從最弱的地方開始，幫你逐項補強。',
+    maxQuestions: 10,
+    concepts: [
+      { id: 'lab',         name: '實驗室安全與量測', mastery: 78 },
+      { id: 'sci_not',     name: '科學記號',         mastery: 82 },
+      { id: 'life',        name: '生物共同特徵',     mastery: 62 },
+      { id: 'taxonomy',    name: '分類階層',         mastery: 45 },
+      { id: 'cell_basic',  name: '細胞基本構造',     mastery: 66 },
+      { id: 'compare_exam',name: '動植物細胞差異',   mastery: 38 },
+      { id: 'microscope',  name: '顯微鏡操作',       mastery: 70 }
     ]
   }
 };
 
-async function openChat(mode) {
-  const script = SCRIPTS[mode];
-  chatScope.textContent = script.scope;
-  chatInput.placeholder = script.placeholder;
-  chatBody.innerHTML = '';
-  chatWrap.classList.remove('hidden');
-  chatWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+// ====================================================================
+// Question bank — keyed by concept id. 2-3 questions per concept.
+// In production these are AI-generated from the teacher's syllabus.
+// ====================================================================
+const QUESTION_BANKS = {
+  // --- Review (Cell Structure) ---------------------------------------
+  membrane: [
+    { q: '細胞膜的主要功能是什麼？',
+      opts: [
+        { letter: 'A', text: '製造能量' },
+        { letter: 'B', text: '控制物質進出', correct: true, why: '細胞膜具有「選擇性通透」的特性 — 控制哪些物質可以進、哪些要排出，是細胞和外界的界線。' },
+        { letter: 'C', text: '儲存遺傳訊息' },
+        { letter: 'D', text: '進行光合作用' }
+      ]},
+    { q: '下列何者最能描述細胞膜的特性？',
+      opts: [
+        { letter: 'A', text: '完全防水，什麼都不能通過' },
+        { letter: 'B', text: '選擇性通透', correct: true, why: '細胞膜不是完全密封、也不是什麼都能通過 — 它「挑」哪些物質可以進出，這就是選擇性通透。' },
+        { letter: 'C', text: '只能讓氣體通過' },
+        { letter: 'D', text: '只能讓水通過' }
+      ]}
+  ],
+  nucleus: [
+    { q: '細胞核中主要儲存什麼？',
+      opts: [
+        { letter: 'A', text: '蛋白質' },
+        { letter: 'B', text: '葡萄糖' },
+        { letter: 'C', text: 'DNA（遺傳物質）', correct: true, why: '細胞核儲存 DNA — 也就是控制這個細胞要怎麼運作、長什麼樣子的「說明書」。' },
+        { letter: 'D', text: '葉綠素' }
+      ]},
+    { q: '為什麼說細胞核是「細胞的控制中心」？',
+      opts: [
+        { letter: 'A', text: '因為它最大' },
+        { letter: 'B', text: '因為它在細胞中間' },
+        { letter: 'C', text: '因為它儲存遺傳訊息並指揮細胞活動', correct: true, why: '細胞核內的 DNA 決定細胞要製造什麼蛋白質、什麼時候分裂、怎麼運作 — 所以它是控制中心。' },
+        { letter: 'D', text: '因為它最圓' }
+      ]}
+  ],
+  wall: [
+    { q: '下列何者不是動物細胞與植物細胞「共同」具備的構造？',
+      opts: [
+        { letter: 'A', text: '細胞膜' },
+        { letter: 'B', text: '細胞核' },
+        { letter: 'C', text: '細胞壁', correct: true, why: '細胞壁是植物細胞特有（由纖維素組成），動物細胞並沒有 — 所以動物身體比較柔軟、植物身體比較硬挺。' },
+        { letter: 'D', text: '細胞質' }
+      ]},
+    { q: '細胞壁的主要成分是什麼？',
+      opts: [
+        { letter: 'A', text: '蛋白質' },
+        { letter: 'B', text: '脂質' },
+        { letter: 'C', text: '纖維素', correct: true, why: '植物細胞壁主要由纖維素（cellulose）組成，提供支撐力 — 這也是為什麼蔬菜咬起來有「纖維」的口感。' },
+        { letter: 'D', text: '澱粉' }
+      ]}
+  ],
+  organelles: [
+    { q: '葉綠體和粒線體最主要的差別是什麼？',
+      opts: [
+        { letter: 'A', text: '大小不同' },
+        { letter: 'B', text: '功能不同 — 葉綠體行光合作用，粒線體製造能量', correct: true, why: '葉綠體（只有植物有）負責光合作用，把光能變成養分；粒線體（動植物都有）負責「呼吸作用」，把養分變成細胞能用的能量。' },
+        { letter: 'C', text: '顏色不同' },
+        { letter: 'D', text: '完全一樣' }
+      ]},
+    { q: '哪一種細胞「不會」有葉綠體？',
+      opts: [
+        { letter: 'A', text: '葉子的細胞' },
+        { letter: 'B', text: '動物的皮膚細胞', correct: true, why: '葉綠體只在植物細胞、而且通常只在綠色部位（葉、嫩莖）才有。動物完全沒有葉綠體 — 所以動物要靠吃東西獲得能量，不能自己行光合作用。' },
+        { letter: 'C', text: '莖的綠色細胞' },
+        { letter: 'D', text: '水草的細胞' }
+      ]}
+  ],
+  compare: [
+    { q: '阿明在顯微鏡下看到一個有「細胞壁」、「葉綠體」、「液胞」的細胞。請問這最可能是下列何者？',
+      opts: [
+        { letter: 'A', text: '人類紅血球' },
+        { letter: 'B', text: '青蛙皮膚細胞' },
+        { letter: 'C', text: '洋蔥根尖細胞', correct: true, why: '細胞壁＋葉綠體＋大液胞 — 這三個都是植物細胞特徵。動物細胞（A、B）沒有細胞壁，細菌（D）有細胞壁但沒有葉綠體。' },
+        { letter: 'D', text: '大腸桿菌' }
+      ]},
+    { q: '下列何者「動物細胞和植物細胞」都有？',
+      opts: [
+        { letter: 'A', text: '細胞壁' },
+        { letter: 'B', text: '葉綠體' },
+        { letter: 'C', text: '大液胞' },
+        { letter: 'D', text: '細胞膜、細胞核、細胞質、粒線體', correct: true, why: '這四個是動植物細胞共同的「基本配備」。細胞壁、葉綠體、大液胞則是植物特有。' }
+      ]}
+  ],
+  // --- Exam (Ch.1 + Ch.2) --------------------------------------------
+  lab: [
+    { q: '進行加熱實驗時，下列何者最安全？',
+      opts: [
+        { letter: 'A', text: '對著試管口看反應' },
+        { letter: 'B', text: '試管口朝向同學' },
+        { letter: 'C', text: '試管口朝向沒有人的方向', correct: true, why: '加熱時內容物可能噴出，試管口必須朝向沒有人的方向，避免燙傷別人或自己。' },
+        { letter: 'D', text: '加熱前不需要做任何檢查' }
+      ]}
+  ],
+  sci_not: [
+    { q: '將 0.00056 寫成科學記號為何？',
+      opts: [
+        { letter: 'A', text: '5.6 × 10⁴' },
+        { letter: 'B', text: '5.6 × 10⁻⁴', correct: true, why: '小數點向右移 4 位才能變成 5.6，所以指數是 −4。科學記號的小數第一位必須是 1～9 之間的非零數字。' },
+        { letter: 'C', text: '56 × 10⁻⁵' },
+        { letter: 'D', text: '0.56 × 10⁻³' }
+      ]}
+  ],
+  life: [
+    { q: '下列何者不是所有生物的共同特徵？',
+      opts: [
+        { letter: 'A', text: '會繁殖' },
+        { letter: 'B', text: '會新陳代謝' },
+        { letter: 'C', text: '會主動移動', correct: true, why: '植物、珊瑚等很多生物不會主動移動，但仍是生物。共同特徵是繁殖、生長、新陳代謝、對刺激有反應、由細胞組成。' },
+        { letter: 'D', text: '由細胞組成' }
+      ]}
+  ],
+  taxonomy: [
+    { q: '生物分類由大到小的正確順序是？',
+      opts: [
+        { letter: 'A', text: '種 → 屬 → 科 → 目 → 綱 → 門 → 界' },
+        { letter: 'B', text: '界 → 門 → 綱 → 目 → 科 → 屬 → 種', correct: true, why: '由大到小：界（最廣）→ 門 → 綱 → 目 → 科 → 屬 → 種（最精確）。可以用「界門綱目科屬種」這個順口溜記。' },
+        { letter: 'C', text: '門 → 界 → 綱 → 目 → 科 → 屬 → 種' },
+        { letter: 'D', text: '界 → 綱 → 門 → 目 → 屬 → 科 → 種' }
+      ]},
+    { q: '兩種生物若同屬「同屬」，下列哪一項一定也相同？',
+      opts: [
+        { letter: 'A', text: '它們的種一定相同' },
+        { letter: 'B', text: '它們的科一定相同', correct: true, why: '科 > 屬 > 種。屬相同 → 科一定相同（屬本來就在科底下）。但種不一定，因為一個屬下可能有多個種。' },
+        { letter: 'C', text: '它們一定能互相繁殖' },
+        { letter: 'D', text: '它們長得一定一樣' }
+      ]}
+  ],
+  cell_basic: [
+    { q: '下列何者「不是」所有細胞都有的基本構造？',
+      opts: [
+        { letter: 'A', text: '細胞膜' },
+        { letter: 'B', text: '細胞質' },
+        { letter: 'C', text: '葉綠體', correct: true, why: '葉綠體只有植物（且通常是綠色部位）的細胞才有。細胞膜、細胞質、細胞核（或核區）是「所有」細胞共同基本構造。' },
+        { letter: 'D', text: '細胞核' }
+      ]}
+  ],
+  compare_exam: [
+    { q: '阿明用顯微鏡觀察一個細胞，看到有細胞壁但沒有葉綠體。這最可能是下列何者？',
+      opts: [
+        { letter: 'A', text: '植物的綠色葉片細胞' },
+        { letter: 'B', text: '動物的皮膚細胞' },
+        { letter: 'C', text: '植物的根部細胞', correct: true, why: '植物根部不見光，所以沒有葉綠體；但仍是植物細胞，有細胞壁。動物（B）沒有細胞壁。葉子（A）兩個都有。' },
+        { letter: 'D', text: '人類紅血球' }
+      ]},
+    { q: '下列何者「只有」植物細胞有？',
+      opts: [
+        { letter: 'A', text: '細胞膜、細胞核' },
+        { letter: 'B', text: '細胞壁、葉綠體、大液胞', correct: true, why: '這三項是植物細胞的「招牌」。動物細胞完全沒有細胞壁和葉綠體，液胞則很小或沒有。' },
+        { letter: 'C', text: '粒線體、細胞質' },
+        { letter: 'D', text: '都不是植物特有' }
+      ]}
+  ],
+  microscope: [
+    { q: '使用顯微鏡時，要先用哪個調節輪找到大致影像？',
+      opts: [
+        { letter: 'A', text: '粗調節輪', correct: true, why: '先用「粗調」快速找到影像（在低倍鏡下），再切換「細調」微調清晰度。順序顛倒可能撞到載玻片。' },
+        { letter: 'B', text: '細調節輪' },
+        { letter: 'C', text: '載物台' },
+        { letter: 'D', text: '反光鏡' }
+      ]}
+  ]
+};
 
-  // Play out the scripted turns
-  for (const turn of script.turns) {
-    await playTurn(turn);
+// ====================================================================
+// Adaptive engine
+// ====================================================================
+let session = null;
+
+function startAdaptiveSession(mode) {
+  const cfg = MODE_CONFIG[mode];
+  session = {
+    mode,
+    cfg,
+    concepts: cfg.concepts.map(c => ({ ...c, _initial: c.mastery, asked: 0 })),
+    askedQuestions: new Set(),  // dedupe by question text
+    questionCount: 0,
+    streak: 0,
+    correctTotal: 0
+  };
+  renderMasteryPanel();
+}
+
+function pickFocusConcept() {
+  if (!session) return null;
+  // Lowest mastery, but skip concepts already at 100%
+  const remaining = session.concepts.filter(c => c.mastery < 100);
+  if (remaining.length === 0) return null;
+  remaining.sort((a, b) => a.mastery - b.mastery);
+  return remaining[0];
+}
+
+function pickNextQuestion() {
+  if (!session) return null;
+  const focus = pickFocusConcept();
+  if (!focus) return null;
+
+  // Try focus concept first; if exhausted, try next-weakest
+  const sorted = [...session.concepts].sort((a, b) => a.mastery - b.mastery);
+  for (const c of sorted) {
+    if (c.mastery >= 100) continue;
+    const bank = QUESTION_BANKS[c.id] || [];
+    const unused = bank.filter(q => !session.askedQuestions.has(q.q));
+    if (unused.length) {
+      // random within unused, slight preference for first listed (easier first)
+      const idx = Math.random() < 0.6 ? 0 : Math.floor(Math.random() * unused.length);
+      const q = unused[idx];
+      return { concept: c, question: q };
+    }
+  }
+  return null; // out of unique questions
+}
+
+function updateMastery(conceptId, isCorrect) {
+  if (!session) return { from: 0, to: 0 };
+  const c = session.concepts.find(x => x.id === conceptId);
+  if (!c) return { from: 0, to: 0 };
+  const from = c.mastery;
+  const delta = isCorrect ? 18 + Math.floor(Math.random() * 6) : 5;
+  c.mastery = Math.min(100, c.mastery + delta);
+  c.asked += 1;
+  return { from, to: c.mastery, delta: c.mastery - from };
+}
+
+function avgMastery() {
+  if (!session) return 0;
+  return session.concepts.reduce((s, c) => s + c.mastery, 0) / session.concepts.length;
+}
+
+function renderMasteryPanel(opts = {}) {
+  if (!session) return;
+  const focus = pickFocusConcept();
+  const listEl = document.getElementById('mastery-list');
+  const summaryEl = document.getElementById('mastery-summary');
+
+  listEl.innerHTML = session.concepts.map(c => {
+    const tier = c.mastery >= 80 ? 'high' : c.mastery >= 50 ? 'mid' : 'low';
+    const isFocus = focus && c.id === focus.id;
+    const bump = opts.bumpedId === c.id ? 'bump' : '';
+    return `<div class="mastery-row ${tier} ${isFocus ? 'focus' : ''} ${bump}" data-cid="${c.id}">
+      <div class="mastery-label"><span class="name">${c.name}</span><span class="pct">${Math.round(c.mastery)}%</span></div>
+      <div class="mastery-bar-bg"><div class="mastery-bar" style="width: ${c.mastery}%"></div></div>
+    </div>`;
+  }).join('');
+
+  const avg = Math.round(avgMastery());
+  if (focus) {
+    summaryEl.innerHTML = `整體理解度 <strong>${avg}%</strong> · 第 ${session.questionCount} / ${session.cfg.maxQuestions} 題<br>AI 鎖定 <span class="focus-name"><strong>${focus.name}</strong></span>`;
+  } else {
+    summaryEl.innerHTML = `整體理解度 <strong>${avg}%</strong> · 已全部掌握 ✓`;
   }
 }
 
-async function playTurn(turn) {
-  await wait(400);
-  // Show typing indicator
+// ====================================================================
+// Preview script (non-adaptive)
+// ====================================================================
+const PREVIEW_TURNS = [
+  { text: '下週林老師會教「細胞分裂」。先給你一個圖像式的預習：' },
+  { text: '想像你的身體現在大約有 30 兆個細胞，但你出生時只有少少幾兆個。多出來的這 20 幾兆，全都是靠 <code>細胞分裂</code> 一個變兩個、兩個變四個⋯⋯這樣慢慢長出來的。' },
+  { text: '下週的重點會放在：<br>• 為什麼細胞要分裂？（生長 · 修復 · 繁殖）<br>• 分裂的基本步驟（先複製，再分開）<br>• 單細胞生物 vs 多細胞生物的差別<br><br>不需要先背，先有畫面就好，上課就更容易跟上。' }
+];
+
+// ====================================================================
+// Chat orchestration
+// ====================================================================
+async function openChat(mode) {
+  const cfg = MODE_CONFIG[mode] || { scope: '範圍：第二章 §4 細胞分裂（下週）', placeholder: '想知道下週要學什麼？' };
+  chatScope.textContent = cfg.scope;
+  chatInput.placeholder = cfg.placeholder;
+  chatBody.innerHTML = '';
+  document.getElementById('session-end-wrap').innerHTML = '';
+  chatWrap.classList.remove('hidden');
+  chatWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  if (mode === 'preview') {
+    // Clear mastery panel
+    document.getElementById('mastery-list').innerHTML = '';
+    document.getElementById('mastery-summary').innerHTML = '<em class="dim">預習模式 · 不評分</em>';
+    session = null;
+    await playMessage('ai', '嗨小明，這是「下週預習」模式 — 不會考你，只是幫你先建立一點印象。');
+    for (const t of PREVIEW_TURNS) await playMessage('ai', t.text);
+    await playMessage('ai', '想要先試兩題暖身嗎？或是等上完課再來「複習模式」就好。');
+    return;
+  }
+
+  // Adaptive (review / exam)
+  startAdaptiveSession(mode);
+  await playMessage('ai', cfg.intro);
+  await askNextQuestion();
+}
+
+async function askNextQuestion() {
+  if (!session) return;
+  const next = pickNextQuestion();
+  const avg = avgMastery();
+
+  // End conditions
+  if (!next || session.questionCount >= session.cfg.maxQuestions || avg >= 92) {
+    return endSession();
+  }
+
+  const { concept, question } = next;
+  session.askedQuestions.add(question.q);
+  session.questionCount += 1;
+
+  // Brief lead-in citing the concept
+  const isFirst = session.questionCount === 1;
+  const lead = isFirst
+    ? `從你目前最弱的「<strong>${concept.name}</strong>」開始（${Math.round(concept.mastery)}%）：`
+    : `下一題 — 我換到「<strong>${concept.name}</strong>」（${Math.round(concept.mastery)}%）：`;
+  await playMessage('ai', lead);
+  await playMessage('ai', renderQuiz(question, concept.id), /*isHtml*/ true);
+}
+
+async function playMessage(role, html, isHtml = true) {
+  await wait(350);
   const typing = document.createElement('div');
   typing.className = 'msg ai';
   typing.innerHTML = `<div class="ava">AI</div><div class="bubble"><span class="typing"><span></span><span></span><span></span></span></div>`;
   chatBody.appendChild(typing);
   chatBody.scrollTop = chatBody.scrollHeight;
-  await wait(700);
+  await wait(600);
   typing.remove();
 
   const msg = document.createElement('div');
-  msg.className = 'msg ' + turn.role;
-  if (turn.quiz) {
-    msg.innerHTML = `<div class="ava">AI</div><div class="bubble">${renderQuiz(turn.quiz)}</div>`;
-  } else {
-    msg.innerHTML = `<div class="ava">${turn.role === 'ai' ? 'AI' : '我'}</div><div class="bubble">${turn.text}</div>`;
-  }
+  msg.className = 'msg ' + role;
+  const ava = role === 'ai' ? 'AI' : '我';
+  msg.innerHTML = `<div class="ava">${ava}</div><div class="bubble">${html}</div>`;
   chatBody.appendChild(msg);
   chatBody.scrollTop = chatBody.scrollHeight;
 }
 
-function renderQuiz(q) {
-  let html = `<div class="quiz"><div class="q">${q.q}</div>`;
-  q.opts.forEach((opt, i) => {
+function renderQuiz(q, conceptId) {
+  let html = `<div class="quiz" data-cid="${conceptId || ''}"><div class="q">${q.q}</div>`;
+  q.opts.forEach((opt) => {
     html += `<div class="opt" data-correct="${opt.correct ? '1' : '0'}" data-why="${opt.why ? encodeURIComponent(opt.why) : ''}"><span class="letter">${opt.letter}</span><span>${opt.text}</span></div>`;
   });
   html += `<div class="feedback hidden"></div></div>`;
   return html;
 }
 
-// Quiz interaction (event delegation since quizzes are added dynamically)
-chatBody.addEventListener('click', (e) => {
+function endSession() {
+  if (!session) return;
+  const avg = Math.round(avgMastery());
+  const initial = session.concepts.reduce((s, c) => s + c._initial, 0) / session.concepts.length;
+  const gain = Math.round(avg - initial);
+  const remaining = session.concepts.filter(c => c.mastery < 70);
+  const remainingText = remaining.length
+    ? remaining.map(c => c.name).join('、')
+    : '無 — 你都掌握得不錯';
+
+  const wrap = document.getElementById('session-end-wrap');
+  wrap.innerHTML = `<div class="session-end">
+    <div class="dim small mono">本次練習結束</div>
+    <div class="big">${avg}%</div>
+    <div class="small muted">整體理解度（↑ ${gain} 分）</div>
+    <div class="row small" style="margin-top: 12px;">
+      <span class="dim mono">需加強</span><span>${remainingText}</span>
+    </div>
+  </div>`;
+
+  setTimeout(async () => {
+    const correctRate = session.questionCount > 0 ? Math.round(100 * session.correctTotal / session.questionCount) : 0;
+    await playMessage('ai',
+      `這次練習結束了。你答對 <strong>${session.correctTotal} / ${session.questionCount}</strong> 題（${correctRate}%），整體理解度從 <strong>${Math.round(initial)}%</strong> 升到 <strong>${avg}%</strong>。<br><br>${remaining.length ? `下次練習我會再幫你補強：<strong>${remainingText}</strong>。` : '你都掌握得不錯！下次可以挑戰更難的題型。'}`
+    );
+  }, 400);
+}
+
+// Quiz answer handler — wired to adaptive engine
+chatBody.addEventListener('click', async (e) => {
   const opt = e.target.closest('.opt');
   if (!opt) return;
   const quiz = opt.closest('.quiz');
   if (quiz.classList.contains('answered')) return;
   quiz.classList.add('answered');
+
   const isCorrect = opt.dataset.correct === '1';
-  const why = decodeURIComponent(opt.dataset.why || '');
-  // Find the correct option and the wrong picked one
   if (isCorrect) {
     opt.classList.add('correct');
   } else {
     opt.classList.add('wrong');
     quiz.querySelectorAll('.opt').forEach(o => { if (o.dataset.correct === '1') o.classList.add('correct'); });
   }
+  const correctOpt = quiz.querySelector('.opt[data-correct="1"]');
+  const correctWhy = decodeURIComponent(correctOpt.dataset.why || '');
   const feedback = quiz.querySelector('.feedback');
   feedback.classList.remove('hidden');
   feedback.classList.add(isCorrect ? 'ok' : 'no');
-  // Find the canonical "why" from the correct option
-  const correctOpt = quiz.querySelector('.opt[data-correct="1"]');
-  const correctWhy = decodeURIComponent(correctOpt.dataset.why || '');
   feedback.innerHTML = isCorrect
     ? `答對了！${correctWhy}`
     : `再想一下。正解是 <strong>${correctOpt.querySelector('.letter').textContent}</strong>。${correctWhy}`;
 
-  // Follow-up AI message
-  setTimeout(() => {
-    const followUp = isCorrect
-      ? '很好，這題你掌握得不錯。接下來我會再幫你出兩題類似題型，確認你真的會了，而不是猜對的。要繼續嗎？'
-      : '沒關係，這題很多同學會錯。要不要我用一張圖示，再幫你梳理一次動物細胞和植物細胞的差別？';
-    const msg = document.createElement('div');
-    msg.className = 'msg ai';
-    msg.innerHTML = `<div class="ava">AI</div><div class="bubble">${followUp}</div>`;
-    chatBody.appendChild(msg);
-    chatBody.scrollTop = chatBody.scrollHeight;
-  }, 600);
+  // Update mastery if this quiz is tied to a concept
+  const cid = quiz.dataset.cid;
+  if (cid && session) {
+    const change = updateMastery(cid, isCorrect);
+    if (isCorrect) session.correctTotal += 1;
+    renderMasteryPanel({ bumpedId: cid });
+    // Brief follow-up + next question
+    setTimeout(async () => {
+      const concept = session.concepts.find(c => c.id === cid);
+      const followUp = isCorrect
+        ? `${concept.name} 從 ${Math.round(change.from)}% → ${Math.round(change.to)}%。`
+        : `${concept.name} 還需要再練習 — 我會再出一題鞏固。`;
+      await playMessage('ai', followUp);
+      await askNextQuestion();
+    }, 1100);
+  }
 });
 
 // Free-form chat — demo responds with a scope-locked answer
