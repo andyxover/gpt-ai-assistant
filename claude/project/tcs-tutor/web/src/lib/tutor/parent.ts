@@ -99,34 +99,54 @@ export async function loadWeeklyDigest(studentId: string): Promise<WeeklyDigestD
     [studentId],
   );
 
-  // Next assessment from current syllabus
-  const { rows: [exam] } = await pool.query<{ name: string; weeks: string[]; scope: string | null; current_week: number }>(
-    `SELECT (a->>'name')::text  AS name,
-            ARRAY(SELECT jsonb_array_elements_text(a->'weeks')) AS weeks,
-            (a->>'scope')::text AS scope,
-            s.current_week
+  // Next assessment from current syllabus. We pull the whole parsed_scope
+  // JSON and iterate in JS — the assessments field can be null / missing /
+  // wrong type if Claude's parse was off, and jsonb_array_elements() on a
+  // non-array throws "cannot extract elements from a scalar".
+  const { rows: [sylRow] } = await pool.query<{
+    parsed_scope: unknown; current_week: number;
+  }>(
+    `SELECT s.parsed_scope, s.current_week
        FROM enrollments e
-       JOIN syllabi s ON s.class_id = e.class_id AND s.superseded_at IS NULL,
-            jsonb_array_elements(s.parsed_scope->'assessments') AS a
+       JOIN syllabi s ON s.class_id = e.class_id AND s.superseded_at IS NULL
       WHERE e.student_id = $1 AND e.withdrawn_at IS NULL
-      ORDER BY (
-        (regexp_match(COALESCE((SELECT v FROM unnest(ARRAY(SELECT jsonb_array_elements_text(a->'weeks'))) v LIMIT 1), 'W99'),
-                      '(\\d+)'))[1]::int
-      )`,
+      ORDER BY s.created_at DESC
+      LIMIT 1`,
     [studentId],
   );
 
   let nextExam: WeeklyDigestData['nextExam'] = null;
-  if (exam) {
-    const weekNum = exam.weeks
-      .map(w => parseInt(w.replace(/\D/g, ''), 10))
-      .filter(n => Number.isFinite(n))
-      .sort((a, b) => a - b)[0];
-    if (weekNum && weekNum >= exam.current_week) {
+  if (sylRow?.parsed_scope) {
+    const scope = sylRow.parsed_scope as { assessments?: unknown };
+    const assessmentsRaw = scope?.assessments;
+    const assessments = Array.isArray(assessmentsRaw) ? assessmentsRaw : [];
+    const currentWeek = Number(sylRow.current_week) || 1;
+
+    // Find the soonest assessment whose first week is at or after now
+    type Assessment = { name?: unknown; weeks?: unknown; scope?: unknown };
+    const upcoming = assessments
+      .map((a: Assessment) => {
+        const weeks = Array.isArray(a?.weeks) ? (a.weeks as unknown[]) : [];
+        const weekNums = weeks
+          .map(w => parseInt(String(w).replace(/\D/g, ''), 10))
+          .filter(n => Number.isFinite(n))
+          .sort((x, y) => x - y);
+        const firstWeek = weekNums[0];
+        if (firstWeek == null || firstWeek < currentWeek) return null;
+        return {
+          name: String(a?.name ?? 'Assessment'),
+          weeksAway: firstWeek - currentWeek,
+          scope: typeof a?.scope === 'string' ? (a.scope as string) : null,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.weeksAway - b.weeksAway);
+
+    if (upcoming[0]) {
       nextExam = {
-        name: exam.name,
-        weeksAway: weekNum - exam.current_week,
-        scope: exam.scope,
+        name: upcoming[0].name,
+        weeksAway: upcoming[0].weeksAway,
+        scope: upcoming[0].scope,
       };
     }
   }
