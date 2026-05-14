@@ -24,12 +24,12 @@ export default async function TeacherHome() {
           </p>
         </a>
         <a
-          href="/teacher/questions"
+          href="/teacher/flagged"
           className="block p-5 bg-white border border-stone-200 rounded-xl hover:border-[#c9874a] transition"
         >
-          <h2 className="font-semibold mb-1">Questions</h2>
+          <h2 className="font-semibold mb-1">Flagged questions</h2>
           <p className="text-sm text-stone-600">
-            Review the generated question pool. Approve or reject flagged items.
+            Review questions students flagged as confusing or wrong.
           </p>
         </a>
         <a
