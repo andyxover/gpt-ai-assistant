@@ -9,36 +9,46 @@ export default async function NewClassPage() {
   if (user.role !== 'teacher' && user.role !== 'admin') redirect('/');
 
   return (
-    <main className="max-w-2xl mx-auto p-6 sm:p-8">
-      <header className="mb-6">
-        <Link href="/teacher/classes" className="text-sm text-stone-500 hover:underline">← Classes</Link>
-        <h1 className="text-3xl font-bold mt-2">New class</h1>
-      </header>
+    <main className="main">
+      <div style={{ marginBottom: 12 }}>
+        <Link href="/teacher/classes" className="mono small dim" style={{ textDecoration: 'underline' }}>
+          ← Classes
+        </Link>
+      </div>
+      <div className="eyebrow">Classes</div>
+      <h1>New class</h1>
+      <p className="subtitle">Create a class, then enroll students and upload a syllabus.</p>
 
-      <form action={createClass} className="space-y-4 bg-white border border-stone-200 rounded-2xl p-6">
-        <Field label="Display name" name="display_name" placeholder="Science 7A" required />
-        <div className="grid grid-cols-3 gap-3">
-          <Field label="Subject" name="subject" placeholder="science" required />
-          <Field label="Grade" name="grade" type="number" min={1} max={12} defaultValue="7" required />
-          <Field label="Section" name="section" placeholder="7A" required />
-        </div>
-        <Field label="Academic year" name="academic_year" placeholder="2026-27" defaultValue="2026-27" required />
-        <button
-          type="submit"
-          className="px-5 py-2.5 rounded-lg bg-[#c9874a] hover:bg-[#a86a36] text-white font-medium"
-        >
-          Create class
-        </button>
-      </form>
+      <div className="card">
+        <form action={createClass}>
+          <Field label="Display name" name="display_name" placeholder="Science 7A" required />
+          <div className="grid-3" style={{ marginBottom: 14 }}>
+            <Field label="Subject" name="subject" placeholder="science" required noMargin />
+            <Field label="Grade" name="grade" type="number" min={1} max={12} defaultValue="7" required noMargin />
+            <Field label="Section" name="section" placeholder="7A" required noMargin />
+          </div>
+          <Field label="Academic year" name="academic_year" placeholder="2026-27" defaultValue="2026-27" required />
+          <button type="submit" className="btn">Create class</button>
+        </form>
+      </div>
     </main>
   );
 }
 
-function Field({ label, ...rest }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+function Field({
+  label,
+  noMargin,
+  ...rest
+}: { label: string; noMargin?: boolean } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <label className="block">
-      <span className="block text-xs font-mono uppercase tracking-wide text-stone-500 mb-1">{label}</span>
-      <input {...rest} className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:border-[#c9874a]" />
+    <label style={{ display: 'block', marginBottom: noMargin ? 0 : 14 }}>
+      <span
+        className="mono small dim"
+        style={{ display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}
+      >
+        {label}
+      </span>
+      <input {...rest} />
     </label>
   );
 }

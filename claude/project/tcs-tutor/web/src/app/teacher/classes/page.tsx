@@ -11,43 +11,49 @@ export default async function TeacherClasses() {
   const classes = await listClassesForTeacher(user.id);
 
   return (
-    <main className="max-w-3xl mx-auto p-8">
-      <header className="mb-8">
-        <Link href="/teacher" className="text-sm text-stone-500 hover:underline">← Back</Link>
-        <div className="flex items-baseline justify-between mt-2">
-          <h1 className="text-3xl font-bold">Classes</h1>
-          <Link
-            href="/teacher/classes/new"
-            className="text-sm px-4 py-2 rounded-lg bg-[#c9874a] hover:bg-[#a86a36] text-white font-medium"
-          >
-            New class
-          </Link>
+    <main className="main">
+      <div style={{ marginBottom: 12 }}>
+        <Link href="/teacher" className="mono small dim" style={{ textDecoration: 'underline' }}>← Teacher home</Link>
+      </div>
+      <div className="row">
+        <div>
+          <div className="eyebrow">Operations</div>
+          <h1>Classes</h1>
         </div>
-      </header>
+        <div className="spacer"></div>
+        <Link href="/teacher/classes/new" className="btn">New class</Link>
+      </div>
+      <p className="subtitle">Open a class for week-by-week progress, student activity, and roster.</p>
 
       {classes.length === 0 ? (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-          <p className="font-medium">No classes yet</p>
-          <p className="text-sm text-stone-600 mt-1">
-            Roster management UI is coming in a later phase. The seed script creates a demo class for you.
-          </p>
+        <div className="attention-card">
+          <div className="label">No classes yet</div>
+          <div className="body">Click <strong>New class</strong> to create one.</div>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {classes.map(c => (
-            <li key={c.id}>
-              <Link
-                href={`/teacher/classes/${c.id}/progress`}
-                className="block p-4 bg-white border border-stone-200 rounded-xl hover:border-[#c9874a] transition"
-              >
-                <p className="font-medium">{c.display_name}</p>
-                <p className="text-xs text-stone-500 mt-0.5">
+        <div className="card" style={{ padding: 0 }}>
+          {classes.map((c, i) => (
+            <Link
+              key={c.id}
+              href={`/teacher/classes/${c.id}/progress`}
+              className="scope-row"
+              style={{
+                margin: 0,
+                borderRadius: 0,
+                border: 'none',
+                borderTop: i > 0 ? '1px solid var(--border-soft)' : 'none',
+              }}
+            >
+              <span style={{ flex: 1 }}>
+                <strong>{c.display_name}</strong>
+                <span className="mono small dim" style={{ marginLeft: 10 }}>
                   {c.subject} · Grade {c.grade} · {c.academic_year}
-                </p>
-              </Link>
-            </li>
+                </span>
+              </span>
+              <span className="dim">→</span>
+            </Link>
           ))}
-        </ul>
+        </div>
       )}
     </main>
   );

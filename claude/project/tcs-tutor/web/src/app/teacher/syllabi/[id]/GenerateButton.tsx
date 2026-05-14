@@ -30,14 +30,10 @@ export default function GenerateButton(props: {
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {msg && <span className="text-xs text-green-700">{msg}</span>}
-      {err && <span className="text-xs text-red-600 max-w-[200px] truncate" title={err}>{err}</span>}
-      <button
-        onClick={handleClick}
-        disabled={pending}
-        className="text-xs px-2.5 py-1 rounded border border-stone-300 hover:border-[#c9874a] hover:bg-stone-50 disabled:opacity-50 disabled:cursor-wait"
-      >
+    <div className="row" style={{ gap: 8 }}>
+      {msg && <span className="mono small" style={{ color: 'var(--success)' }}>{msg}</span>}
+      {err && <span className="mono small" style={{ color: 'var(--danger)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={err}>{err}</span>}
+      <button onClick={handleClick} disabled={pending} className="btn secondary small">
         {pending ? 'Generating…' : props.hasQuestions ? 'Generate 5 more' : 'Generate 5'}
       </button>
     </div>

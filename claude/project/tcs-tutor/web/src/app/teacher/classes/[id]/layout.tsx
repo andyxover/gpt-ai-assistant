@@ -20,18 +20,21 @@ export default async function ClassLayout({
   if (!klass) notFound();
 
   return (
-    <main className="max-w-4xl mx-auto p-6 sm:p-8">
-      <header className="mb-6">
-        <Link href="/teacher" className="text-sm text-stone-500 hover:underline">← Teacher home</Link>
-        <h1 className="text-3xl font-bold mt-2">{klass.display_name}</h1>
-        <p className="text-stone-600 text-sm mt-1">
-          {klass.subject} · Grade {klass.grade} · Section {klass.section} · {klass.academic_year}
-        </p>
-      </header>
+    <main className="main">
+      <div style={{ marginBottom: 18 }}>
+        <Link href="/teacher" className="mono small dim" style={{ textDecoration: 'underline' }}>
+          ← Teacher home
+        </Link>
+      </div>
+      <div className="eyebrow">Class</div>
+      <h1>{klass.display_name}</h1>
+      <p className="subtitle">
+        {klass.subject} · Grade {klass.grade} · Section {klass.section} · {klass.academic_year}
+      </p>
 
       <ClassTabs classId={id} />
 
-      <div className="mt-6">{children}</div>
+      <div>{children}</div>
     </main>
   );
 }

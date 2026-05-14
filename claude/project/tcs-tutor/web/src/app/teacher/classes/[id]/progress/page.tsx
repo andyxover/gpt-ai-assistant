@@ -3,11 +3,11 @@ import { getActiveSyllabus, getClassForTeacher } from '@/lib/tutor/classes';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 
-type WeekStatus = 'done' | 'this-week' | 'next-week' | 'upcoming';
+type WeekStatus = 'covered' | 'current' | 'next' | 'upcoming';
 
 interface DisplayWeek {
-  wk: string;          // e.g. "W1" or "W3-W4"
-  weekNums: number[];  // [1] or [3,4]
+  wk: string;
+  weekNums: number[];
   topics: string[];
   status: WeekStatus;
 }
@@ -28,140 +28,108 @@ export default async function ClassProgressPage({ params }: { params: Promise<{ 
   if (!klass) notFound();
 
   const syllabus = await getActiveSyllabus(id);
-  if (!syllabus) {
-    return (
-      <EmptyState classId={id} />
-    );
-  }
+  if (!syllabus) return <EmptyState />;
 
-  const scope = syllabus.parsed_scope;
   const currentWeek = syllabus.current_week;
-
-  const chapters = buildChapterRollup(scope, currentWeek);
+  const chapters = buildChapterRollup(syllabus.parsed_scope, currentWeek);
   const totalWeeks = chapters.reduce((s, c) => s + c.weeks.reduce((ws, w) => ws + w.weekNums.length, 0), 0);
   const completedWeeks = Math.max(0, Math.min(totalWeeks, currentWeek - 1));
   const percent = totalWeeks > 0 ? Math.round((completedWeeks / totalWeeks) * 100) : 0;
 
-  const nextAssessment = pickNextAssessment(scope, currentWeek);
+  const nextAssessment = pickNextAssessment(syllabus.parsed_scope, currentWeek);
 
   return (
-    <div className="space-y-6">
-      <section className="bg-white border border-stone-200 rounded-2xl p-6">
-        <div className="flex items-baseline justify-between mb-1">
-          <h2 className="font-semibold text-lg">This semester&apos;s progress</h2>
-          <p className="text-sm text-stone-500 font-mono">
-            Week {currentWeek} {totalWeeks > 0 && <>/ {totalWeeks}</>}
-          </p>
-        </div>
-        <p className="text-xs text-stone-500 mb-4">
-          Students see &quot;this week&quot; pinned to this progress.
-        </p>
-
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-2 bg-stone-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[#c9874a] transition-all"
-              style={{ width: `${percent}%` }}
-            />
+    <>
+      <div className="card">
+        <div className="row" style={{ marginBottom: 14 }}>
+          <div>
+            <div className="card-title">This semester&apos;s progress</div>
+            <div className="card-desc small">Students see &quot;this week&quot; pinned to this progress.</div>
           </div>
-          <span className="text-sm font-medium text-stone-700 w-12 text-right">{percent}%</span>
+          <div className="spacer"></div>
+          <span className="mono small dim">Week {currentWeek}{totalWeeks ? ` / ${totalWeeks}` : ''}</span>
         </div>
-      </section>
+        <div className="progress">
+          <div className="progress-bar"><div style={{ width: `${percent}%` }} /></div>
+          <span className="progress-label">{percent}%</span>
+        </div>
+      </div>
 
-      {chapters.map((ch, i) => (
-        <ChapterCard key={i} chapter={ch} />
-      ))}
+      <div className="scope">
+        {chapters.map((ch, i) => {
+          const countLabel =
+            ch.status === 'complete' ? 'complete' :
+            ch.status === 'in-progress' ? 'in progress' :
+            'upcoming';
+          return (
+            <div key={i} className="scope-section">
+              <div className="scope-h">
+                <h4>{ch.title}</h4>
+                <span className="count">{countLabel}</span>
+              </div>
+              {ch.weeks.map((w, j) => {
+                const cls =
+                  w.status === 'covered' ? 'scope-row covered' :
+                  w.status === 'current' ? 'scope-row current' :
+                  'scope-row';
+                const chip =
+                  w.status === 'covered' ? 'done' :
+                  w.status === 'current' ? 'this week' :
+                  w.status === 'next' ? 'next week' :
+                  'upcoming';
+                return (
+                  <div key={j} className={cls}>
+                    <span className="wk">{w.wk}</span>
+                    <span className="topic">{w.topics.join(' · ')}</span>
+                    <span className="chip">{chip}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
 
       {nextAssessment && (
-        <section className="bg-stone-50 border border-stone-200 rounded-2xl p-5">
-          <div className="flex items-baseline justify-between">
+        <div className="card" style={{ marginTop: 18 }}>
+          <div className="row">
             <div>
-              <p className="font-medium">{nextAssessment.name}</p>
-              <p className="text-sm text-stone-600 mt-0.5">
-                {nextAssessment.scope ?? 'Scope TBD'}
-                {' · '}
+              <div className="card-title">{nextAssessment.name}</div>
+              <div className="card-desc small">
+                {nextAssessment.scope ?? 'Scope TBD'} ·{' '}
                 {nextAssessment.weeksAway > 0
-                  ? `${nextAssessment.weeksAway} ${nextAssessment.weeksAway === 1 ? 'week' : 'weeks'} away (Week ${nextAssessment.targetWeek})`
+                  ? `${nextAssessment.weeksAway} ${nextAssessment.weeksAway === 1 ? 'week' : 'weeks'} away`
                   : nextAssessment.weeksAway === 0
                   ? 'this week'
                   : 'past'}
-              </p>
+              </div>
             </div>
-            <p className="text-xs text-stone-500 font-mono">
+            <div className="spacer"></div>
+            <span className="mono small dim">
               {nextAssessment.weightPercent != null ? `${nextAssessment.weightPercent}%` : ''}
-            </p>
+            </span>
           </div>
-        </section>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
-function ChapterCard({ chapter }: { chapter: DisplayChapter }) {
-  const statusLabel =
-    chapter.status === 'complete' ? 'complete'
-    : chapter.status === 'in-progress' ? 'in progress'
-    : 'upcoming';
-  const statusClass =
-    chapter.status === 'complete' ? 'text-green-700'
-    : chapter.status === 'in-progress' ? 'text-[#a86a36]'
-    : 'text-stone-500';
-
+function EmptyState() {
   return (
-    <section className="bg-white border border-stone-200 rounded-2xl p-5">
-      <div className="flex items-baseline justify-between mb-3">
-        <h3 className="font-semibold">{chapter.title}</h3>
-        <span className={`text-xs ${statusClass}`}>{statusLabel}</span>
+    <div className="card">
+      <div className="card-title">No syllabus uploaded yet</div>
+      <div className="card-desc">
+        Upload one in <Link href="/teacher/syllabi" style={{ color: 'var(--primary)' }}>Syllabi</Link> and progress will appear here.
       </div>
-      <ul className="space-y-1.5">
-        {chapter.weeks.map((w, i) => (
-          <li key={i} className="flex items-center gap-3 text-sm">
-            <span className={`w-10 font-mono text-xs shrink-0 ${
-              w.status === 'this-week' ? 'text-[#a86a36] font-semibold' : 'text-stone-500'
-            }`}>
-              {w.wk}
-            </span>
-            <span className={`flex-1 ${w.status === 'this-week' ? 'text-stone-900' : 'text-stone-600'}`}>
-              {w.topics.join(' · ')}
-            </span>
-            <WeekChip status={w.status} />
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function WeekChip({ status }: { status: WeekStatus }) {
-  const map: Record<WeekStatus, { label: string; cls: string }> = {
-    done: { label: 'done', cls: 'bg-green-50 text-green-700' },
-    'this-week': { label: 'this week', cls: 'bg-[#c9874a] text-white' },
-    'next-week': { label: 'next week', cls: 'bg-amber-50 text-amber-800' },
-    upcoming: { label: 'upcoming', cls: 'bg-stone-100 text-stone-500' },
-  };
-  const m = map[status];
-  return <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full uppercase tracking-wide shrink-0 ${m.cls}`}>{m.label}</span>;
-}
-
-function EmptyState({ classId }: { classId: string }) {
-  return (
-    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-      <p className="font-medium">No syllabus yet</p>
-      <p className="text-sm text-stone-600 mt-1">
-        Upload one on the{' '}
-        <Link href="/teacher/syllabi" className="text-[#a86a36] underline">Syllabi page</Link>{' '}
-        and progress will appear here.
-      </p>
-      <p className="text-xs text-stone-400 mt-3">Class ID: {classId}</p>
     </div>
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// helpers
-// ────────────────────────────────────────────────────────────────────────────
-
-function buildChapterRollup(scope: import('@/lib/tutor/parse-syllabus').ParsedScope | null, currentWeek: number): DisplayChapter[] {
+function buildChapterRollup(
+  scope: import('@/lib/tutor/parse-syllabus').ParsedScope | null,
+  currentWeek: number,
+): DisplayChapter[] {
   if (!scope || !Array.isArray(scope.chapters)) return [];
   return scope.chapters.map(ch => {
     const weeks: DisplayWeek[] = (ch.weeks ?? []).map(w => {
@@ -175,7 +143,6 @@ function buildChapterRollup(scope: import('@/lib/tutor/parse-syllabus').ParsedSc
         status: classifyWeekRange(nums, currentWeek),
       };
     });
-
     const allNums = weeks.flatMap(w => w.weekNums);
     const maxWeek = allNums.length ? Math.max(...allNums) : 0;
     const minWeek = allNums.length ? Math.min(...allNums) : 0;
@@ -183,7 +150,6 @@ function buildChapterRollup(scope: import('@/lib/tutor/parse-syllabus').ParsedSc
     if (maxWeek < currentWeek) chStatus = 'complete';
     else if (minWeek <= currentWeek && maxWeek >= currentWeek) chStatus = 'in-progress';
     else chStatus = 'upcoming';
-
     return { title: ch.title, status: chStatus, weeks };
   });
 }
@@ -192,14 +158,13 @@ function classifyWeekRange(nums: number[], currentWeek: number): WeekStatus {
   if (!nums.length) return 'upcoming';
   const max = Math.max(...nums);
   const min = Math.min(...nums);
-  if (max < currentWeek) return 'done';
-  if (min <= currentWeek && currentWeek <= max) return 'this-week';
-  if (min === currentWeek + 1) return 'next-week';
+  if (max < currentWeek) return 'covered';
+  if (min <= currentWeek && currentWeek <= max) return 'current';
+  if (min === currentWeek + 1) return 'next';
   return 'upcoming';
 }
 
 function parseWeekRange(wk: string): number[] {
-  // Examples: "W3", "W3-W4", "W7-W9"
   const nums = String(wk).match(/\d+/g)?.map(Number) ?? [];
   if (nums.length === 0) return [];
   if (nums.length === 1) return [nums[0]];
@@ -211,7 +176,10 @@ function parseWeekRange(wk: string): number[] {
   return out;
 }
 
-function pickNextAssessment(scope: import('@/lib/tutor/parse-syllabus').ParsedScope | null, currentWeek: number) {
+function pickNextAssessment(
+  scope: import('@/lib/tutor/parse-syllabus').ParsedScope | null,
+  currentWeek: number,
+) {
   if (!scope?.assessments) return null;
   const upcoming = scope.assessments
     .map(a => {

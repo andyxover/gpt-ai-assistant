@@ -53,81 +53,83 @@ export default async function FlaggedPage({
   );
 
   return (
-    <main className="max-w-3xl mx-auto p-6 sm:p-8">
-      <header className="mb-6">
-        <Link href="/teacher" className="text-sm text-stone-500 hover:underline">← Back</Link>
-        <div className="flex items-baseline justify-between mt-2">
-          <h1 className="text-3xl font-bold">Flagged questions</h1>
-          <Link
-            href={showAll ? '/teacher/flagged' : '/teacher/flagged?show=all'}
-            className="text-sm text-[#a86a36] hover:underline"
-          >
-            {showAll ? 'Show open only' : 'Show all'}
-          </Link>
+    <main className="main">
+      <div style={{ marginBottom: 12 }}>
+        <Link href="/teacher" className="mono small dim" style={{ textDecoration: 'underline' }}>← Teacher home</Link>
+      </div>
+      <div className="row">
+        <div>
+          <div className="eyebrow">Quality</div>
+          <h1>Flagged questions</h1>
         </div>
-      </header>
+        <div className="spacer"></div>
+        <Link
+          href={showAll ? '/teacher/flagged' : '/teacher/flagged?show=all'}
+          className="btn ghost small"
+        >
+          {showAll ? 'Show open only' : 'Show all'}
+        </Link>
+      </div>
+      <p className="subtitle">Review items students marked as confusing or wrong. Keep them, or retire and stop serving them.</p>
 
       {rows.length === 0 ? (
-        <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-center">
-          <p className="text-stone-600">
-            {showAll ? 'No flags found.' : 'No open flags. 🎉'}
-          </p>
+        <div className="empty-illust">
+          {showAll ? 'No flags found.' : 'No open flags. 🎉'}
         </div>
       ) : (
-        <ul className="space-y-4">
-          {rows.map(f => {
-            const options = normalizeOptions(f.options);
-            return (
-              <li key={f.flag_id} className="bg-white border border-stone-200 rounded-2xl p-5">
-                <div className="flex items-baseline justify-between mb-2">
-                  <div>
-                    <p className="text-sm font-medium text-[#a86a36]">{f.concept_name}</p>
-                    <p className="text-xs text-stone-500 mt-0.5">{f.class_name}</p>
-                  </div>
-                  <p className="text-xs text-stone-500">
-                    Flagged by {f.flagger_display} ({f.flagger_role}) ·{' '}
-                    {new Date(f.flagged_at).toLocaleDateString()}
-                    {f.retired_at && ' · question retired'}
-                  </p>
+        rows.map(f => {
+          const options = normalizeOptions(f.options);
+          return (
+            <div key={f.flag_id} className="card">
+              <div className="row" style={{ marginBottom: 8 }}>
+                <div>
+                  <div className="eyebrow" style={{ margin: 0 }}>{f.concept_name}</div>
+                  <div className="mono small dim" style={{ marginTop: 4 }}>{f.class_name}</div>
                 </div>
+                <div className="spacer"></div>
+                <div className="mono small dim" style={{ textAlign: 'right' }}>
+                  Flagged by {f.flagger_display} ({f.flagger_role})<br />
+                  {new Date(f.flagged_at).toLocaleDateString()}
+                  {f.retired_at && ' · retired'}
+                </div>
+              </div>
 
-                {f.reason && (
-                  <p className="text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
-                    <span className="font-semibold text-amber-900">Reason: </span>
-                    {f.reason}
-                  </p>
-                )}
+              {f.reason && (
+                <div className="attention-card" style={{ marginBottom: 12, padding: '10px 12px' }}>
+                  <div className="label">Reason</div>
+                  <div className="body" style={{ marginTop: 4 }}>{f.reason}</div>
+                </div>
+              )}
 
-                <p className="text-stone-900 mb-3 whitespace-pre-wrap">{f.body}</p>
+              <p style={{ margin: '8px 0 12px', whiteSpace: 'pre-wrap' }}>{f.body}</p>
 
-                <ul className="space-y-1.5 mb-3">
-                  {options.map(o => (
-                    <li
-                      key={o.letter}
-                      className={`px-3 py-2 rounded-lg text-sm border ${
-                        o.letter === f.correct_letter
-                          ? 'border-green-200 bg-green-50'
-                          : 'border-stone-100'
-                      }`}
-                    >
-                      <span className="font-semibold mr-2">{o.letter})</span>
-                      {o.text}
-                      {o.letter === f.correct_letter && <span className="ml-2 text-xs text-green-700">correct</span>}
-                    </li>
-                  ))}
-                </ul>
+              <div className="quiz" style={{ marginTop: 0 }}>
+                {options.map(o => (
+                  <div
+                    key={o.letter}
+                    className={`opt ${o.letter === f.correct_letter ? 'correct' : ''}`}
+                  >
+                    <span className="letter">{o.letter}</span>
+                    <span style={{ flex: 1 }}>{o.text}</span>
+                    {o.letter === f.correct_letter && <span className="mono small">correct</span>}
+                  </div>
+                ))}
+              </div>
 
-                {f.explanation && (
-                  <p className="text-sm text-stone-600 leading-relaxed border-l-2 border-stone-200 pl-3 mb-3">
-                    {f.explanation}
-                  </p>
-                )}
+              {f.explanation && (
+                <p className="muted small" style={{ marginTop: 12, paddingLeft: 12, borderLeft: '2px solid var(--border)' }}>
+                  {f.explanation}
+                </p>
+              )}
 
-                {!showAll && <FlagActions flagId={f.flag_id} />}
-              </li>
-            );
-          })}
-        </ul>
+              {!showAll && (
+                <div style={{ marginTop: 12 }}>
+                  <FlagActions flagId={f.flag_id} />
+                </div>
+              )}
+            </div>
+          );
+        })
       )}
     </main>
   );

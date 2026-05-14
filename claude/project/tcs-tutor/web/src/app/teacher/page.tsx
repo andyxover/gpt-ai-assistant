@@ -1,5 +1,6 @@
 import { getTutorUser } from '@/lib/tutor/role';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
 export default async function TeacherHome() {
   const user = await getTutorUser();
@@ -7,50 +8,31 @@ export default async function TeacherHome() {
   if (user.role !== 'teacher' && user.role !== 'admin') redirect('/');
 
   return (
-    <main className="max-w-3xl mx-auto p-8">
-      <header className="mb-8">
-        <p className="text-sm text-stone-500">Teacher</p>
-        <h1 className="text-3xl font-bold">{user.display_name}</h1>
-      </header>
+    <main className="main">
+      <div className="eyebrow">Teacher</div>
+      <h1>{user.display_name}</h1>
+      <p className="subtitle">Set up your scope, watch the class, and act on what students are stuck on.</p>
 
-      <section className="grid sm:grid-cols-2 gap-4">
-        <a
-          href="/teacher/syllabi"
-          className="block p-5 bg-white border border-stone-200 rounded-xl hover:border-[#c9874a] transition"
-        >
-          <h2 className="font-semibold mb-1">Syllabi</h2>
-          <p className="text-sm text-stone-600">
-            Upload a syllabus and see the parsed concepts.
-          </p>
-        </a>
-        <a
-          href="/teacher/flagged"
-          className="block p-5 bg-white border border-stone-200 rounded-xl hover:border-[#c9874a] transition"
-        >
-          <h2 className="font-semibold mb-1">Flagged questions</h2>
-          <p className="text-sm text-stone-600">
-            Review questions students flagged as confusing or wrong.
-          </p>
-        </a>
-        <a
-          href="/teacher/classes"
-          className="block p-5 bg-white border border-stone-200 rounded-xl hover:border-[#c9874a] transition"
-        >
-          <h2 className="font-semibold mb-1">Classes</h2>
-          <p className="text-sm text-stone-600">
-            Week-by-week progress, student activity, roster.
-          </p>
-        </a>
-        <a
-          href="/teacher/reports"
-          className="block p-5 bg-white border border-stone-200 rounded-xl hover:border-[#c9874a] transition"
-        >
-          <h2 className="font-semibold mb-1">Parent reports</h2>
-          <p className="text-sm text-stone-600">
-            Preview and send the weekly digest.
-          </p>
-        </a>
-      </section>
+      <div className="action-cards">
+        <Link href="/teacher/syllabi" className="action">
+          <div className="label">Content</div>
+          <div className="title">Syllabi</div>
+          <div className="desc">Upload a syllabus, edit parsed concepts, generate the question pool.</div>
+          <div className="meta">→ Manage syllabi</div>
+        </Link>
+        <Link href="/teacher/classes" className="action">
+          <div className="label">Operations</div>
+          <div className="title">Classes</div>
+          <div className="desc">Week-by-week progress, student activity, roster.</div>
+          <div className="meta">→ Open class view</div>
+        </Link>
+        <Link href="/teacher/flagged" className="action">
+          <div className="label">Quality</div>
+          <div className="title">Flagged questions</div>
+          <div className="desc">Review questions students flagged as confusing or wrong. Keep or retire.</div>
+          <div className="meta">→ Review flags</div>
+        </Link>
+      </div>
     </main>
   );
 }

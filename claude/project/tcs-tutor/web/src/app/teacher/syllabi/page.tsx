@@ -50,88 +50,87 @@ export default async function TeacherSyllabiPage() {
   );
 
   return (
-    <main className="max-w-3xl mx-auto p-8">
-      <header className="mb-8">
-        <Link href="/teacher" className="text-sm text-stone-500 hover:underline">← Back</Link>
-        <h1 className="text-3xl font-bold mt-2">Syllabi</h1>
-        <p className="text-stone-600 mt-1">Upload a syllabus and Claude extracts the concept structure.</p>
-      </header>
+    <main className="main">
+      <div style={{ marginBottom: 12 }}>
+        <Link href="/teacher" className="mono small dim" style={{ textDecoration: 'underline' }}>← Teacher home</Link>
+      </div>
+      <div className="eyebrow">Content</div>
+      <h1>Syllabi</h1>
+      <p className="subtitle">Upload a syllabus. Claude extracts the chapter/week/concept structure for the question pool and the class progress view.</p>
 
       {classes.length === 0 ? (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-8">
-          <p className="font-medium">No classes yet</p>
-          <p className="text-sm text-stone-600 mt-1">
-            You need a class before uploading a syllabus. (Class creation UI coming in Phase 2 — for now, the seed script creates a demo class.)
-          </p>
+        <div className="attention-card">
+          <div className="label">No classes yet</div>
+          <div className="body">You need a class before uploading a syllabus. Create one in <Link href="/teacher/classes/new" style={{ color: 'var(--primary)' }}>Classes → New class</Link>.</div>
         </div>
       ) : (
-        <section className="mb-10">
-          <h2 className="font-semibold mb-3">Upload a new syllabus</h2>
-          <form action={uploadSyllabus} className="space-y-4 bg-white border border-stone-200 rounded-xl p-5">
-            <div>
-              <label className="block text-sm font-medium mb-1">Class</label>
-              <select name="class_id" required className="w-full border border-stone-300 rounded-lg px-3 py-2">
+        <section>
+          <div className="section-h"><h2>Upload a new syllabus</h2></div>
+          <div className="card">
+            <form action={uploadSyllabus}>
+              <label className="mono small dim" style={{ display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Class</label>
+              <select name="class_id" required style={{ marginBottom: 14 }}>
                 {classes.map(c => (
                   <option key={c.id} value={c.id}>{c.display_name} ({c.academic_year})</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Semester</label>
-              <select name="semester" defaultValue="S1" className="w-full border border-stone-300 rounded-lg px-3 py-2">
+
+              <label className="mono small dim" style={{ display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Semester</label>
+              <select name="semester" defaultValue="S1" style={{ marginBottom: 14 }}>
                 <option value="S1">Semester 1</option>
                 <option value="S2">Semester 2</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Syllabus text</label>
+
+              <label className="mono small dim" style={{ display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Syllabus text</label>
               <textarea
                 name="raw_text"
                 required
                 rows={14}
                 placeholder="Paste the full syllabus text — chapter list, weekly schedule, assessments…"
-                className="w-full border border-stone-300 rounded-lg px-3 py-2 font-mono text-sm"
+                style={{ marginBottom: 14 }}
               />
-            </div>
-            <button type="submit" className="px-5 py-2.5 rounded-lg bg-[#c9874a] hover:bg-[#a86a36] text-white font-medium">
-              Parse & save
-            </button>
-            <p className="text-xs text-stone-500">
-              Parsing takes ~20-40s and costs ~4¢ per syllabus. The parsed structure is editable on the next screen.
-            </p>
-          </form>
+
+              <div className="toolbar">
+                <button type="submit" className="btn">Parse &amp; save</button>
+                <span className="mono small dim">~20-40s, ~4¢ per syllabus</span>
+              </div>
+            </form>
+          </div>
         </section>
       )}
 
-      <section>
-        <h2 className="font-semibold mb-3">Existing syllabi</h2>
-        {syllabi.length === 0 ? (
-          <p className="text-stone-500 text-sm">None yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {syllabi.map(s => (
-              <li key={s.id}>
-                <Link
-                  href={`/teacher/syllabi/${s.id}`}
-                  className={`block p-4 bg-white border border-stone-200 rounded-xl hover:border-[#c9874a] transition ${s.superseded_at ? 'opacity-60' : ''}`}
-                >
-                  <div className="flex items-baseline justify-between">
-                    <div>
-                      <p className="font-medium">{s.class_name} — {s.semester}</p>
-                      <p className="text-xs text-stone-500 mt-0.5">
-                        {s.concept_count} concept{s.concept_count === 1 ? '' : 's'} · Week {s.current_week} ·{' '}
-                        {new Date(s.created_at).toLocaleDateString()}
-                        {s.superseded_at ? ' · superseded' : ''}
-                      </p>
-                    </div>
-                    <span className="text-stone-400">→</span>
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <div className="section-h"><h2>Existing syllabi</h2></div>
+      {syllabi.length === 0 ? (
+        <div className="empty-illust">None yet.</div>
+      ) : (
+        <div className="card" style={{ padding: 0 }}>
+          {syllabi.map((s, i) => (
+            <Link
+              key={s.id}
+              href={`/teacher/syllabi/${s.id}`}
+              className="scope-row"
+              style={{
+                margin: 0,
+                borderRadius: 0,
+                border: 'none',
+                borderTop: i > 0 ? '1px solid var(--border-soft)' : 'none',
+                background: s.superseded_at ? 'var(--bg-soft)' : 'var(--surface)',
+                opacity: s.superseded_at ? 0.7 : 1,
+              }}
+            >
+              <span style={{ flex: 1 }}>
+                <strong>{s.class_name}</strong> — {s.semester}
+                <span className="mono small dim" style={{ marginLeft: 10 }}>
+                  {s.concept_count} concept{s.concept_count === 1 ? '' : 's'} · Week {s.current_week} ·{' '}
+                  {new Date(s.created_at).toLocaleDateString()}
+                  {s.superseded_at ? ' · superseded' : ''}
+                </span>
+              </span>
+              <span className="dim">→</span>
+            </Link>
+          ))}
+        </div>
+      )}
     </main>
   );
 }

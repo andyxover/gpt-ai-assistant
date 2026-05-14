@@ -26,87 +26,59 @@ export default async function ActivityPage({ params }: { params: Promise<{ id: s
   const insight = await generateInsight({ stats, stuck, missed });
 
   return (
-    <div className="space-y-6">
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard
-          label="Active students this week"
-          big={`${stats.activeStudents}`}
-          unit={`/ ${stats.enrolledStudents}`}
-          sub={
-            stats.changeVsPrevWeek.activeStudents != null
+    <>
+      <div className="kpi-grid">
+        <div className="kpi">
+          <div className="label">Active students this week</div>
+          <div className="value">{stats.activeStudents} <span className="mono dim small">/ {stats.enrolledStudents}</span></div>
+          <div className={`sub ${stats.changeVsPrevWeek.activeStudents != null && stats.changeVsPrevWeek.activeStudents >= 0 ? 'up' : stats.changeVsPrevWeek.activeStudents != null ? 'down' : ''}`}>
+            {stats.changeVsPrevWeek.activeStudents != null
               ? `${stats.changeVsPrevWeek.activeStudents >= 0 ? '↑' : '↓'} ${Math.abs(stats.changeVsPrevWeek.activeStudents)}% vs last week`
-              : 'no prior-week baseline yet'
-          }
-        />
-        <StatCard
-          label="Avg. practice"
-          big={`${stats.avgQuestionsPerActiveStudent}`}
-          unit="Q / student"
-          sub={stats.totalAttemptsThisWeek > 0 ? `${stats.accuracyPercent}% accuracy` : 'no attempts yet'}
-        />
-        <StatCard
-          label="Most stuck on"
-          big={stuck?.name ?? '—'}
-          bigSize="small"
-          sub={
-            stuck
+              : 'no prior-week baseline yet'}
+          </div>
+        </div>
+        <div className="kpi">
+          <div className="label">Avg. practice</div>
+          <div className="value">{stats.avgQuestionsPerActiveStudent} <span className="mono dim small">Q / student</span></div>
+          <div className="sub">{stats.totalAttemptsThisWeek > 0 ? `${stats.accuracyPercent}% accuracy` : 'no attempts yet'}</div>
+        </div>
+        <div className="kpi">
+          <div className="label">Most stuck on</div>
+          <div className="value" style={{ fontSize: 18 }}>{stuck?.name ?? '—'}</div>
+          <div className="sub">
+            {stuck
               ? `${stuck.studentsAffected} student${stuck.studentsAffected === 1 ? '' : 's'} · ${stuck.accuracyPercent}% accuracy`
-              : 'not enough data'
-          }
-        />
-      </section>
+              : 'not enough data'}
+          </div>
+        </div>
+      </div>
 
-      <section className="bg-white border border-stone-200 rounded-2xl p-5">
-        <h2 className="font-semibold mb-3">Most-missed questions this week</h2>
+      <div className="card">
+        <div className="card-title" style={{ marginBottom: 12 }}>Hot questions this week</div>
         {missed.length === 0 ? (
-          <p className="text-sm text-stone-500">Nothing missed yet (or no attempts recorded this week).</p>
+          <p className="muted small" style={{ margin: 0 }}>Nothing missed yet (or no attempts recorded this week).</p>
         ) : (
-          <ul className="divide-y divide-stone-100">
-            {missed.map((m, i) => (
-              <li key={i} className="py-3 flex items-start gap-3 text-sm">
-                <span className="font-mono text-xs text-stone-500 w-10 shrink-0 pt-0.5">×{m.wrongCount}</span>
-                <span className="flex-1 text-stone-700">{truncate(m.body, 140)}</span>
-                <span className="text-[10px] uppercase tracking-wide bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full shrink-0">
-                  {m.conceptName}
-                </span>
-              </li>
-            ))}
-          </ul>
+          missed.map((m, i) => (
+            <div key={i} className="scope-row" style={{ background: 'var(--surface)' }}>
+              <span className="wk">×{m.wrongCount}</span>
+              <span className="topic">{truncate(m.body, 140)}</span>
+              <span className="chip">{m.conceptName}</span>
+            </div>
+          ))
         )}
 
         {insight && (
-          <div className="mt-4 p-4 bg-[#fdf6ec] border border-[#e8d3b3] rounded-xl text-sm leading-relaxed">
-            <strong className="text-[#a86a36]">Insight: </strong>
-            <span className="text-stone-700">{insight}</span>
+          <div style={{
+            marginTop: 14, padding: 12,
+            background: 'var(--accent-soft)', borderRadius: 8,
+            fontSize: 13, lineHeight: 1.55, color: 'var(--text)',
+          }}>
+            <strong style={{ color: 'var(--accent)' }}>Insight: </strong>
+            {insight}
           </div>
         )}
-      </section>
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  big,
-  unit,
-  sub,
-  bigSize = 'large',
-}: {
-  label: string;
-  big: string;
-  unit?: string;
-  sub: string;
-  bigSize?: 'large' | 'small';
-}) {
-  return (
-    <div className="bg-white border border-stone-200 rounded-2xl p-5">
-      <p className="text-xs font-mono text-stone-500 uppercase tracking-wide">{label}</p>
-      <div className="mt-1.5 flex items-baseline gap-2">
-        <span className={bigSize === 'small' ? 'text-lg font-semibold' : 'text-3xl font-semibold'}>{big}</span>
-        {unit && <span className="text-xs text-stone-400 font-mono">{unit}</span>}
       </div>
-      <p className="text-xs text-stone-600 mt-1">{sub}</p>
-    </div>
+    </>
   );
 }
 

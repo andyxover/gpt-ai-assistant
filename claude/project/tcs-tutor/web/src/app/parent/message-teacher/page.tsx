@@ -4,10 +4,12 @@ import MessageForm from './MessageForm';
 
 const STRINGS = {
   en: {
+    eyebrow: 'Reports',
     title: 'Message teacher',
-    intro: 'Send a note about your child to the teacher. They\'ll see it in their inbox.',
+    intro: "Send a note about your child to the teacher. They'll see it in their inbox.",
   },
   zh: {
+    eyebrow: '報告',
     title: '訊息老師',
     intro: '傳訊息給老師。老師會在收件匣看到。',
   },
@@ -22,10 +24,13 @@ export default async function MessageTeacherPage() {
   const L = STRINGS[lang];
 
   return (
-    <main className="max-w-3xl mx-auto p-6 sm:p-8">
-      <h1 className="text-3xl font-bold mb-2">{L.title}</h1>
-      <p className="text-stone-600 mb-6">{L.intro}</p>
-      <MessageForm lang={lang} />
-    </main>
+    <>
+      <div className="eyebrow">{L.eyebrow}</div>
+      <h1>{L.title}</h1>
+      <p className="subtitle">{L.intro}</p>
+      <div className="card">
+        <MessageForm lang={lang} />
+      </div>
+    </>
   );
 }

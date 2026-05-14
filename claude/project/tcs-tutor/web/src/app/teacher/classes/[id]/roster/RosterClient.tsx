@@ -34,7 +34,6 @@ export default function RosterClient(props: { classId: string; initialRows: Rost
       }
       setMsg(res.created ? 'Student created and enrolled.' : 'Existing student enrolled.');
       formRef.current?.reset();
-      // Refresh roster via fetch (cheap)
       const r = await fetch(`/api/teacher-roster/${props.classId}`, { cache: 'no-store' });
       if (r.ok) {
         const data: { rows: RosterRow[] } = await r.json();
@@ -58,80 +57,78 @@ export default function RosterClient(props: { classId: string; initialRows: Rost
   }
 
   return (
-    <div className="space-y-6">
-      <section className="bg-white border border-stone-200 rounded-2xl p-5">
-        <h2 className="font-semibold mb-3">Add a student</h2>
-        <form ref={formRef} onSubmit={onAdd} className="grid sm:grid-cols-[1fr,1fr,auto] gap-3 items-start">
-          <input
-            name="display_name"
-            placeholder="Student name"
-            required
-            className="px-3 py-2 border border-stone-300 rounded-lg"
-          />
-          <input
-            name="email"
-            type="email"
-            placeholder="student@example.com"
-            required
-            className="px-3 py-2 border border-stone-300 rounded-lg"
-          />
-          <button
-            type="submit"
-            disabled={pending}
-            className="px-5 py-2 rounded-lg bg-[#c9874a] hover:bg-[#a86a36] disabled:opacity-50 text-white font-medium"
-          >
-            Enroll
-          </button>
+    <>
+      <div className="card">
+        <div className="card-title">Add a student</div>
+        <div className="card-desc small" style={{ marginBottom: 12 }}>
+          Creates the student account if their email is new. They sign in at /login with that email.
+        </div>
+        <form ref={formRef} onSubmit={onAdd} className="row" style={{ gap: 10, alignItems: 'stretch' }}>
+          <input name="display_name" placeholder="Student name" required style={{ flex: 1 }} />
+          <input name="email" type="email" placeholder="student@example.com" required style={{ flex: 1.2 }} />
+          <button type="submit" disabled={pending} className="btn">Enroll</button>
         </form>
-        {msg && <p className="mt-3 text-sm text-green-700">{msg}</p>}
-        {err && <p className="mt-3 text-sm text-red-600">{err}</p>}
-      </section>
+        {msg && <p className="small" style={{ color: 'var(--success)', marginTop: 10 }}>{msg}</p>}
+        {err && <p className="small" style={{ color: 'var(--danger)', marginTop: 10 }}>{err}</p>}
+      </div>
 
-      <section>
-        <h2 className="font-semibold mb-3">
-          Roster <span className="text-stone-400 font-normal">({rows.length})</span>
-        </h2>
-        {rows.length === 0 ? (
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-center text-stone-500">
-            No students enrolled yet.
-          </div>
-        ) : (
-          <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-stone-50 text-left text-xs uppercase font-mono text-stone-500">
-                <tr>
-                  <th className="px-5 py-3">Name</th>
-                  <th className="px-5 py-3">Email</th>
-                  <th className="px-5 py-3">Attempts</th>
-                  <th className="px-5 py-3">Avg mastery</th>
-                  <th className="px-5 py-3"></th>
+      <div className="section-h">
+        <h2>Roster <span className="mono dim small">({rows.length})</span></h2>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="empty-illust">No students enrolled yet.</div>
+      ) : (
+        <div className="card" style={{ padding: 0 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+            <thead>
+              <tr style={{ background: 'var(--surface-2)' }}>
+                <th style={thStyle}>Name</th>
+                <th style={thStyle}>Email</th>
+                <th style={thStyle}>Attempts</th>
+                <th style={thStyle}>Avg mastery</th>
+                <th style={thStyle}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.student_id} style={{ borderTop: '1px solid var(--border-soft)' }}>
+                  <td style={tdStyle}><strong>{r.display_name}</strong></td>
+                  <td style={tdStyle} className="muted">{r.email ?? '—'}</td>
+                  <td style={tdStyle} className="mono">{r.total_attempts}</td>
+                  <td style={tdStyle} className="mono">
+                    {r.avg_mastery == null ? '—' : `${Math.round(r.avg_mastery)}/100`}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'right' }}>
+                    <button
+                      onClick={() => onWithdraw(r.student_id, r.display_name)}
+                      disabled={pending}
+                      className="btn danger-ghost"
+                    >
+                      Withdraw
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {rows.map(r => (
-                  <tr key={r.student_id}>
-                    <td className="px-5 py-3 font-medium">{r.display_name}</td>
-                    <td className="px-5 py-3 text-stone-600">{r.email ?? '—'}</td>
-                    <td className="px-5 py-3">{r.total_attempts}</td>
-                    <td className="px-5 py-3">
-                      {r.avg_mastery == null ? '—' : `${Math.round(r.avg_mastery)} / 100`}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <button
-                        onClick={() => onWithdraw(r.student_id, r.display_name)}
-                        disabled={pending}
-                        className="text-xs text-red-700 hover:underline disabled:opacity-50"
-                      >
-                        Withdraw
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-    </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
   );
 }
+
+const thStyle: React.CSSProperties = {
+  padding: '10px 18px',
+  textAlign: 'left',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 11,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: 'var(--text-dim)',
+  fontWeight: 500,
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: '12px 18px',
+};

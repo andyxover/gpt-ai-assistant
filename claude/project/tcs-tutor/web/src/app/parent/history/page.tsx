@@ -10,8 +10,24 @@ interface HistoryRow {
 }
 
 const STRINGS = {
-  en: { title: 'Learning history', empty: 'No practice history yet.', col_week: 'Week', col_questions: 'Questions', col_accuracy: 'Accuracy' },
-  zh: { title: '學習歷程', empty: '尚無練習紀錄。', col_week: '週次', col_questions: '題數', col_accuracy: '正確率' },
+  en: {
+    eyebrow: 'Reports',
+    title: 'Learning history',
+    subtitle: 'Practice volume and accuracy by week.',
+    empty: 'No practice history yet.',
+    col_week: 'Week of',
+    col_questions: 'Questions',
+    col_accuracy: 'Accuracy',
+  },
+  zh: {
+    eyebrow: '報告',
+    title: '學習歷程',
+    subtitle: '依週次顯示練習量與正確率。',
+    empty: '尚無練習紀錄。',
+    col_week: '週次',
+    col_questions: '題數',
+    col_accuracy: '正確率',
+  },
 } as const;
 
 export default async function HistoryPage({ searchParams }: { searchParams: Promise<{ child?: string }> }) {
@@ -43,31 +59,33 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-6 sm:p-8">
-      <h1 className="text-3xl font-bold mb-6">{L.title}</h1>
+    <>
+      <div className="eyebrow">{L.eyebrow}</div>
+      <h1>{L.title}</h1>
+      <p className="subtitle">{L.subtitle}</p>
 
       {rows.length === 0 ? (
-        <p className="text-stone-600">{L.empty}</p>
+        <div className="empty-illust">{L.empty}</div>
       ) : (
-        <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-stone-50 text-left text-xs uppercase font-mono text-stone-500">
-              <tr>
-                <th className="px-5 py-3">{L.col_week}</th>
-                <th className="px-5 py-3">{L.col_questions}</th>
-                <th className="px-5 py-3">{L.col_accuracy}</th>
+        <div className="card" style={{ padding: 0 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+            <thead>
+              <tr style={{ background: 'var(--surface-2)' }}>
+                <th style={thStyle}>{L.col_week}</th>
+                <th style={thStyle}>{L.col_questions}</th>
+                <th style={thStyle}>{L.col_accuracy}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100">
+            <tbody>
               {rows.map(r => {
                 const total = Number(r.total);
                 const correct = Number(r.correct);
                 const acc = total > 0 ? Math.round((correct / total) * 100) : 0;
                 return (
-                  <tr key={r.week}>
-                    <td className="px-5 py-3 font-mono text-stone-600">{r.week}</td>
-                    <td className="px-5 py-3">{total}</td>
-                    <td className="px-5 py-3">{acc}%</td>
+                  <tr key={r.week} style={{ borderTop: '1px solid var(--border-soft)' }}>
+                    <td style={tdStyle} className="mono muted">{r.week}</td>
+                    <td style={tdStyle}>{total}</td>
+                    <td style={tdStyle} className="mono">{acc}%</td>
                   </tr>
                 );
               })}
@@ -75,6 +93,21 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
           </table>
         </div>
       )}
-    </main>
+    </>
   );
 }
+
+const thStyle: React.CSSProperties = {
+  padding: '10px 18px',
+  textAlign: 'left',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 11,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: 'var(--text-dim)',
+  fontWeight: 500,
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: '12px 18px',
+};

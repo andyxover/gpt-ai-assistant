@@ -12,26 +12,17 @@ const TABS = [
 
 export default function ClassTabs({ classId }: { classId: string }) {
   const pathname = usePathname();
-
   return (
-    <nav className="border-b border-stone-200 flex gap-1">
+    <div className="tabs">
       {TABS.map(t => {
         const href = `/teacher/classes/${classId}/${t.slug}`;
         const active = pathname === href || pathname.startsWith(href + '/');
         return (
-          <Link
-            key={t.slug}
-            href={href}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition ${
-              active
-                ? 'border-[#c9874a] text-[#a86a36]'
-                : 'border-transparent text-stone-500 hover:text-stone-900'
-            }`}
-          >
+          <Link key={t.slug} href={href} className={`tab ${active ? 'active' : ''}`}>
             {t.label}
           </Link>
         );
       })}
-    </nav>
+    </div>
   );
 }
