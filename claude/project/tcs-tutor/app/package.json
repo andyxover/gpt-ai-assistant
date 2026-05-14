@@ -1,0 +1,20 @@
+{
+  "name": "tcs-tutor",
+  "version": "0.1.0",
+  "description": "TCS Tutor backbone — AI-generated, scope-locked tutoring for Grade 7 Science.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "parse-syllabus": "node cli/parse-syllabus.js",
+    "db:init": "psql $DATABASE_URL -f db/schema.sql",
+    "db:reset": "psql $DATABASE_URL -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' && npm run db:init"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
