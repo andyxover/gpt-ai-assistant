@@ -396,12 +396,82 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--p
 .parent-footer .item:first-child::before { content: ""; margin: 0; }
 
 /* ============================================================================
+   Mastery panel (used on practice + chat pages)
+   ============================================================================ */
+.with-mastery { display: grid; grid-template-columns: 280px 1fr; gap: 24px; align-items: start; }
+.mastery-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 16px;
+  position: sticky; top: 84px;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+}
+.mastery-header {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em;
+  color: var(--text-dim); text-transform: uppercase;
+  margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+}
+.mastery-header::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+}
+.mastery-summary {
+  font-size: 13px; color: var(--text-muted);
+  margin-bottom: 18px; line-height: 1.55;
+}
+.mastery-summary strong { color: var(--text); font-weight: 600; }
+.mastery-summary .focus-name { color: var(--accent); }
+.mastery-row {
+  margin-bottom: 14px;
+  position: relative; padding-left: 10px;
+  transition: padding-left .25s ease;
+}
+.mastery-row::before {
+  content: ""; position: absolute; left: 0; top: 5px; bottom: 5px;
+  width: 2px; border-radius: 2px;
+  background: transparent; transition: background .25s ease;
+}
+.mastery-row.focus { padding-left: 14px; }
+.mastery-row.focus::before { background: var(--accent); }
+.mastery-row.focus .mastery-label .name::after {
+  content: "← AI focus";
+  font-family: var(--font-mono); font-size: 10px;
+  color: var(--accent); margin-left: 6px;
+  letter-spacing: 0.04em;
+  animation: focusPulse 1.6s ease-in-out infinite;
+}
+@keyframes focusPulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.mastery-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 13px; margin-bottom: 5px;
+}
+.mastery-label .name { font-weight: 500; color: var(--text); }
+.mastery-label .pct { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+.mastery-bar-bg {
+  height: 6px; background: var(--border-soft);
+  border-radius: 3px; overflow: hidden;
+}
+.mastery-bar {
+  height: 100%; border-radius: 3px;
+  transition: width .8s cubic-bezier(0.4, 0.0, 0.2, 1), background .3s ease;
+}
+.mastery-row.low  .mastery-bar { background: var(--danger); }
+.mastery-row.mid  .mastery-bar { background: var(--warn); }
+.mastery-row.high .mastery-bar { background: var(--success); }
+
+/* ============================================================================
    Responsive
    ============================================================================ */
 @media (max-width: 880px) {
   .sidebar { display: none; }
   .main { padding: 20px; }
   .grid-2, .grid-3, .action-cards, .kpi-grid { grid-template-columns: 1fr; }
+  .with-mastery { grid-template-columns: 1fr; }
+  .mastery-panel { position: static; max-height: 280px; }
   .improvement-row { grid-template-columns: 1.4fr 80px 56px; gap: 10px; }
   .improvement-row .delta { display: none; }
 }

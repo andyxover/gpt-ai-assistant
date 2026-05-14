@@ -1,7 +1,10 @@
 import { getTutorUser } from '@/lib/tutor/role';
+import { findActiveSyllabusForStudent } from '@/lib/tutor/mastery';
+import { pool } from '@/lib/tutor/db';
 import { redirect } from 'next/navigation';
 import { startSession } from './actions';
 import PracticeClient from './PracticeClient';
+import MasteryPanel from '@/components/MasteryPanel';
 
 type Mode = 'review' | 'preview' | 'exam_prep';
 
@@ -32,6 +35,23 @@ export default async function PracticePage({
 
   const session = await startSession(mode);
 
+  // Look up syllabus + current week so the mastery panel knows what to render.
+  let syllabusId: string | null = null;
+  let currentWeek = 1;
+  if (session.ok) {
+    const syl = await findActiveSyllabusForStudent(user.id);
+    if (syl) {
+      syllabusId = syl.id;
+      const { rows } = await pool.query<{ current_week: number }>(
+        `SELECT current_week FROM syllabi WHERE id = $1`,
+        [syl.id],
+      );
+      currentWeek = Number(rows[0]?.current_week ?? 1);
+    }
+  }
+
+  const focusConceptId = session.ok ? (session.question?.concept_id ?? null) : null;
+
   return (
     <>
       <div className="eyebrow">Practice · {MODE_LABELS[mode]}</div>
@@ -45,11 +65,23 @@ export default async function PracticePage({
           <a href="/student" className="btn secondary small" style={{ marginTop: 12 }}>← Back</a>
         </div>
       ) : (
-        <PracticeClient
-          initialQuestion={session.question ?? null}
-          sessionId={session.sessionId ?? ''}
-          initialError={session.error}
-        />
+        <div className="with-mastery">
+          {syllabusId && (
+            <MasteryPanel
+              studentId={user.id}
+              syllabusId={syllabusId}
+              currentWeek={currentWeek}
+              focusConceptId={focusConceptId}
+            />
+          )}
+          <div>
+            <PracticeClient
+              initialQuestion={session.question ?? null}
+              sessionId={session.sessionId ?? ''}
+              initialError={session.error}
+            />
+          </div>
+        </div>
       )}
     </>
   );

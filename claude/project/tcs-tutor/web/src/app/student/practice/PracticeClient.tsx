@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { submitAnswer, requestNext } from './actions';
 import type { QuestionForStudent, AttemptResult } from '@/lib/tutor/mastery';
 
@@ -9,6 +10,7 @@ export default function PracticeClient(props: {
   sessionId: string;
   initialError?: string;
 }) {
+  const router = useRouter();
   const [question, setQuestion] = useState<QuestionForStudent | null>(props.initialQuestion);
   const [feedback, setFeedback] = useState<AttemptResult | null>(null);
   const [pickedLetter, setPickedLetter] = useState<string | null>(null);
@@ -30,6 +32,9 @@ export default function PracticeClient(props: {
         return;
       }
       setFeedback(res.attempt ?? null);
+      // Re-fetch server data (so the MasteryPanel reflects the new score)
+      // without resetting local question/feedback state.
+      router.refresh();
     });
   }
 
@@ -49,6 +54,7 @@ export default function PracticeClient(props: {
         return;
       }
       setQuestion(res.question);
+      router.refresh();
     });
   }
 

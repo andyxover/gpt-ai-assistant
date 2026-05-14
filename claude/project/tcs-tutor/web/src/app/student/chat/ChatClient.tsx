@@ -1,8 +1,39 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { sendChat } from './actions';
 import type { ChatMessage } from '@/lib/tutor/chat';
+
+// Override default react-markdown components so paragraphs / lists
+// don't blow out the chat bubble with default browser margins.
+const MD_COMPONENTS = {
+  p: (p: React.HTMLAttributes<HTMLParagraphElement>) => (
+    <p style={{ margin: '0 0 8px' }} {...p} />
+  ),
+  ul: (p: React.HTMLAttributes<HTMLUListElement>) => (
+    <ul style={{ margin: '0 0 8px', paddingLeft: 22 }} {...p} />
+  ),
+  ol: (p: React.HTMLAttributes<HTMLOListElement>) => (
+    <ol style={{ margin: '0 0 8px', paddingLeft: 22 }} {...p} />
+  ),
+  li: (p: React.HTMLAttributes<HTMLLIElement>) => (
+    <li style={{ margin: '0 0 2px' }} {...p} />
+  ),
+  h1: (p: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h3 style={{ margin: '8px 0 6px', fontSize: 15 }} {...p} />
+  ),
+  h2: (p: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h3 style={{ margin: '8px 0 6px', fontSize: 15 }} {...p} />
+  ),
+  h3: (p: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h3 style={{ margin: '8px 0 6px', fontSize: 14 }} {...p} />
+  ),
+  strong: (p: React.HTMLAttributes<HTMLElement>) => (
+    <strong style={{ fontWeight: 600 }} {...p} />
+  ),
+};
 
 export default function ChatClient(props: {
   initialMessages: ChatMessage[];
@@ -73,7 +104,18 @@ export default function ChatClient(props: {
         {messages.map(m => (
           <div key={m.id} className={`msg ${m.role === 'student' ? 'user' : 'ai'}`}>
             <div className="ava">{m.role === 'student' ? props.studentInitial : 'AI'}</div>
-            <div className="bubble">{m.content}</div>
+            <div
+              className="bubble"
+              style={{ whiteSpace: m.role === 'ai' ? 'normal' : 'pre-wrap' }}
+            >
+              {m.role === 'ai' ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
+                  {m.content}
+                </ReactMarkdown>
+              ) : (
+                m.content
+              )}
+            </div>
           </div>
         ))}
 
