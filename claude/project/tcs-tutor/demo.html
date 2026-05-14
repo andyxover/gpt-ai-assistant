@@ -357,6 +357,132 @@
   .delta-toast.down { background: #fbeaec; color: var(--danger); }
   .delta-toast.show { opacity: 1; transform: translateY(0); }
 
+  /* ============ Parent view ============ */
+  .report-header {
+    background: linear-gradient(135deg, #1a4a6e, #2a7aab);
+    color: #fff; border-radius: 14px; padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  .report-header .eyebrow { color: rgba(255,255,255,.7); }
+  .report-header h1 { color: #fff; margin: 0 0 4px; }
+  .report-header .lede { color: rgba(255,255,255,.88); margin: 6px 0 0; font-size: 14.5px; line-height: 1.55; }
+  .report-header .delta {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 6px;
+    background: rgba(255,255,255,.18);
+    font-family: var(--font-mono); font-size: 13px;
+    margin-left: 8px;
+  }
+  .report-header .delta.up::before { content: "↑"; }
+  .report-header .delta.down::before { content: "↓"; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .kpi .label { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase; }
+  .kpi .value { font-size: 26px; font-weight: 600; margin: 4px 0 2px; letter-spacing: -0.01em; }
+  .kpi .sub { font-size: 12.5px; color: var(--text-muted); }
+  .kpi .sub.up { color: var(--success); }
+  .kpi .sub.down { color: var(--danger); }
+
+  .section-h { display: flex; align-items: baseline; justify-content: space-between; margin: 28px 0 12px; }
+  .section-h h2 { margin: 0; font-size: 17px; }
+  .section-h .hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+
+  .improvement-row {
+    display: grid; grid-template-columns: 1.5fr 110px 70px 60px; align-items: center; gap: 14px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border-soft); font-size: 14px;
+  }
+  .improvement-row:last-child { border-bottom: 0; }
+  .improvement-row .name { font-weight: 500; }
+  .improvement-row .name .sub { display: block; font-size: 11.5px; color: var(--text-dim); font-weight: 400; margin-top: 2px; }
+  .improvement-row .spark-cell { display: flex; align-items: center; }
+  .improvement-row .pct { font-family: var(--font-mono); font-size: 14px; text-align: right; color: var(--text); }
+  .improvement-row .delta { font-family: var(--font-mono); font-size: 12px; text-align: right; }
+  .improvement-row .delta.up { color: var(--success); }
+  .improvement-row .delta.down { color: var(--danger); }
+  .improvement-row .delta.flat { color: var(--text-dim); }
+
+  .spark { width: 100px; height: 28px; }
+
+  .attention-card {
+    border: 1px solid #E5C78F;
+    background: linear-gradient(0deg, #FCF6E8, #FDFBF3);
+    border-radius: 12px; padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+  .attention-card .label { font-family: var(--font-mono); font-size: 11px; color: var(--warn); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+  .attention-card .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .attention-card .concept { font-size: 17px; font-weight: 600; }
+  .attention-card .meta { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+  .attention-card .body { font-size: 13.5px; line-height: 1.6; color: var(--text); }
+  .attention-card .practice {
+    margin-top: 12px; padding: 12px;
+    background: var(--surface); border-radius: 8px; border: 1px solid var(--border-soft);
+    font-size: 13px;
+  }
+  .attention-card .practice .q { margin-bottom: 6px; }
+  .attention-card .practice .q::before { content: "Q"; font-family: var(--font-mono); font-size: 10px; padding: 1px 5px; border-radius: 3px; background: var(--primary); color: #fff; margin-right: 6px; }
+
+  .prediction-card {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 12px; padding: 16px 18px;
+  }
+  .prediction-card .row { gap: 14px; }
+  .prediction-band {
+    flex: 1; position: relative;
+    height: 26px;
+    background: linear-gradient(90deg, #FBEAEC 0%, #FBEAEC 40%, #FCF6E8 40%, #FCF6E8 60%, #E8F4EE 60%, #E8F4EE 100%);
+    border-radius: 6px; border: 1px solid var(--border-soft);
+    margin-top: 8px;
+  }
+  .prediction-band .marker {
+    position: absolute; top: -4px; bottom: -4px; width: 3px;
+    background: var(--text);
+  }
+  .prediction-band .marker::before {
+    content: ""; position: absolute; top: -5px; left: -4px;
+    border: 5px solid transparent; border-top-color: var(--text);
+  }
+  .prediction-band .band-range {
+    position: absolute; top: 0; bottom: 0;
+    background: rgba(30, 95, 140, 0.15);
+    border-left: 1px dashed var(--primary);
+    border-right: 1px dashed var(--primary);
+  }
+  .prediction-band .tick { position: absolute; top: 100%; font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); transform: translateX(-50%); margin-top: 4px; }
+
+  .action-list {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 4px 0;
+  }
+  .action-item {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px 18px; border-bottom: 1px solid var(--border-soft);
+  }
+  .action-item:last-child { border-bottom: 0; }
+  .action-num {
+    width: 26px; height: 26px; flex-shrink: 0;
+    border-radius: 50%; background: var(--primary-soft); color: var(--primary);
+    font-family: var(--font-mono); font-weight: 700; font-size: 13px;
+    display: grid; place-items: center;
+  }
+  .action-body .title { font-weight: 500; font-size: 14px; margin-bottom: 2px; }
+  .action-body .desc { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+  .action-body .time { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); margin-top: 4px; display: inline-block; }
+
+  .parent-footer {
+    margin-top: 32px; padding: 16px 0;
+    border-top: 1px dashed var(--border);
+    font-size: 12px; color: var(--text-dim);
+    display: flex; gap: 18px; flex-wrap: wrap;
+  }
+  .parent-footer .item::before { content: "·"; margin-right: 6px; color: var(--border); }
+  .parent-footer .item:first-child::before { content: ""; margin: 0; }
+
   /* ============ Help bubble ============ */
   .help {
     position: fixed; right: 24px; bottom: 24px; z-index: 100;
@@ -374,9 +500,11 @@
   @media (max-width: 880px) {
     .sidebar { display: none; }
     .main { padding: 20px; }
-    .grid-2, .grid-3, .action-cards { grid-template-columns: 1fr; }
+    .grid-2, .grid-3, .action-cards, .kpi-grid { grid-template-columns: 1fr; }
     .chat-layout { grid-template-columns: 1fr; }
     .mastery-panel { border-right: 0; border-bottom: 1px solid var(--border); max-height: 260px; }
+    .improvement-row { grid-template-columns: 1.4fr 80px 56px; gap: 10px; }
+    .improvement-row .delta { display: none; }
   }
 </style>
 </head>
@@ -394,6 +522,7 @@
   <div class="role-toggle" role="tablist" aria-label="Role">
     <button id="role-teacher" class="active">老師 Teacher</button>
     <button id="role-student">學生 Student</button>
+    <button id="role-parent">家長 Parent</button>
   </div>
 </div>
 
@@ -666,6 +795,46 @@
   </main>
 </div>
 
+<!-- ============ Parent view ============ -->
+<div class="app hidden" id="view-parent">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">我的孩子</div>
+      <div class="sidebar-item active">
+        <span>王小明</span>
+        <span class="badge mono">七A</span>
+      </div>
+      <div class="sidebar-item">
+        <span>王小華</span>
+        <span class="badge mono">五B</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">報告</div>
+      <div class="sidebar-item active">本週週報</div>
+      <div class="sidebar-item">學習歷程</div>
+      <div class="sidebar-item">段考預測</div>
+      <div class="sidebar-item">與老師通訊</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">設定</div>
+      <div class="sidebar-item">通知偏好</div>
+      <div class="sidebar-item">隱私設定</div>
+    </div>
+    <div class="me">
+      <div class="avatar" style="background: #2E7D5B;">王</div>
+      <div>
+        <div style="font-size: 13px; font-weight: 500;">王媽媽</div>
+        <div class="small muted">王小明 · 王小華 的家長</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main" id="parent-main">
+    <!-- Rendered by JS -->
+  </main>
+</div>
+
 <!-- Help bubble -->
 <div class="help" id="help">
   <div class="title"><span class="dot"></span><span id="help-title">展示導覽</span></div>
@@ -737,28 +906,40 @@ const PARSED_SCOPE = {
 // ====================================================================
 // Top bar: role toggle
 // ====================================================================
-const btnTeacher = document.getElementById('role-teacher');
-const btnStudent = document.getElementById('role-student');
-const viewTeacher = document.getElementById('view-teacher');
-const viewStudent = document.getElementById('view-student');
+const ROLES = {
+  teacher: {
+    btn: 'role-teacher', view: 'view-teacher',
+    helpTitle: '老師體驗導覽',
+    helpBody: '1. 點「載入範例」（或自行貼大綱）。 2. 點「解析並產生範圍」。 3. 切到「班級進度」和「學生活動」分頁看看老師看到的整體狀況。'
+  },
+  student: {
+    btn: 'role-student', view: 'view-student',
+    helpTitle: '學生體驗導覽',
+    helpBody: '點任一張卡片（複習 / 預習 / 段考準備）開啟 AI 輔導對話 — 觀察左邊的理解度條會隨答題即時更新。'
+  },
+  parent: {
+    btn: 'role-parent', view: 'view-parent',
+    helpTitle: '家長體驗導覽',
+    helpBody: '這是王媽媽每週透過 LINE 收到的學習報告。重點：孩子的進步幅度、最弱概念、本週可以做的具體事。'
+  }
+};
 const helpTitle = document.getElementById('help-title');
 const helpBody = document.getElementById('help-body');
 
 function setRole(role) {
-  if (role === 'teacher') {
-    btnTeacher.classList.add('active'); btnStudent.classList.remove('active');
-    viewTeacher.classList.remove('hidden'); viewStudent.classList.add('hidden');
-    helpTitle.textContent = '老師體驗導覽';
-    helpBody.textContent = '1. 點「載入範例」（或自行貼大綱）。 2. 點「解析並產生範圍」。 3. 切到「班級進度」和「學生活動」分頁看看老師看到的整體狀況。';
-  } else {
-    btnStudent.classList.add('active'); btnTeacher.classList.remove('active');
-    viewStudent.classList.remove('hidden'); viewTeacher.classList.add('hidden');
-    helpTitle.textContent = '學生體驗導覽';
-    helpBody.textContent = '點任一張卡片（複習 / 預習 / 段考準備）開啟 AI 輔導對話 — 注意它「不會教超出老師進度範圍」的內容。';
-  }
+  Object.entries(ROLES).forEach(([key, cfg]) => {
+    const btn = document.getElementById(cfg.btn);
+    const view = document.getElementById(cfg.view);
+    btn.classList.toggle('active', key === role);
+    view.classList.toggle('hidden', key !== role);
+  });
+  helpTitle.textContent = ROLES[role].helpTitle;
+  helpBody.textContent = ROLES[role].helpBody;
+  if (role === 'parent') renderParentReport();
 }
-btnTeacher.addEventListener('click', () => setRole('teacher'));
-btnStudent.addEventListener('click', () => setRole('student'));
+Object.entries(ROLES).forEach(([key, cfg]) => {
+  document.getElementById(cfg.btn).addEventListener('click', () => setRole(key));
+});
 
 // ====================================================================
 // Tabs
@@ -1359,6 +1540,204 @@ async function sendMessage() {
 }
 
 function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ====================================================================
+// Parent report — sample data + renderer
+// ====================================================================
+const PARENT_REPORT = {
+  child: { name: '王小明', class: '七年A班', seat: 23 },
+  week: { num: 5, range: '5/13 ~ 5/19', dateline: '本週週報 · 由 TCS Tutor 於每週日晚間自動產生' },
+  teacher: { name: '林老師', subject: '七年級自然' },
+  topic: '細胞構造與功能',
+  overall: { current: 75, lastWeek: 69, delta: 6 },
+  engagement: { studyTime: '3.2 小時', problems: 47, accuracy: 73 },
+  // Each concept: 4-week trajectory (W2 W3 W4 W5)
+  concepts: [
+    { name: '細胞膜', history: [38, 48, 58, 78], current: 78, delta: 38 },
+    { name: '細胞核', history: [55, 65, 72, 90], current: 90, delta: 35 },
+    { name: '細胞壁（植物特徵）', history: [25, 30, 38, 62], current: 62, delta: 37 },
+    { name: '葉綠體與粒線體', history: [22, 28, 35, 55], current: 55, delta: 33 },
+    { name: '動植物細胞比較', history: [30, 35, 42, 48], current: 48, delta: 18 }
+  ],
+  attention: {
+    concept: '動植物細胞比較',
+    current: 48,
+    target: 70,
+    note: '這個概念是段考的常見題型，王小明在最近兩次練習都卡住。',
+    suggestion: '這個週末，請王小明用自己的話跟您解釋：「為什麼動物細胞沒有細胞壁？」如果說不出來，下面這兩題可以一起做做看。',
+    practice: [
+      '阿明用顯微鏡看到一個細胞有「細胞壁」但沒有「葉綠體」。請問這是植物還是動物細胞？為什麼？',
+      '為什麼蔬菜（植物）有「纖維」，但肉（動物）沒有？提示：跟細胞構造有關。'
+    ]
+  },
+  exam: {
+    name: '第一次段考',
+    daysAway: 18,
+    readiness: 42,
+    predicted: { low: 71, mid: 76, high: 81 },
+    note: '依目前進度推估，預測分數 76 分（71-81 範圍）。若把「動植物比較」補強到 70%，預測可拉高到 80 以上。'
+  },
+  actions: [
+    {
+      title: '週末 30 分鐘陪練「動植物細胞比較」',
+      desc: '用上方建議的兩道練習題，跟孩子一起做。重點不是答對，而是讓他用自己的話解釋給您聽。',
+      time: '約 30 分鐘'
+    },
+    {
+      title: '6/1 段考前，幫忙設定一個提醒',
+      desc: '段考前一週（5/25），孩子的「段考模擬練習」會大幅增加。提醒他每天花 20 分鐘練 TCS Tutor 段考題型。',
+      time: '提醒一次'
+    }
+  ]
+};
+
+function sparkline(values, color) {
+  const min = 0, max = 100, w = 100, h = 28, pad = 3;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * (w - pad * 2) + pad;
+    const y = h - ((v - min) / (max - min)) * (h - pad * 2) - pad;
+    return [x, y];
+  });
+  const path = pts.map(p => p.join(',')).join(' ');
+  const last = pts[pts.length - 1];
+  // Filled area below the line
+  const area = [
+    `${pts[0][0]},${h}`,
+    ...pts.map(p => p.join(',')),
+    `${last[0]},${h}`
+  ].join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" class="spark" preserveAspectRatio="none">
+    <polygon points="${area}" fill="${color}" fill-opacity="0.12"/>
+    <polyline points="${path}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${last[0]}" cy="${last[1]}" r="2.6" fill="${color}"/>
+  </svg>`;
+}
+
+function tierColor(v) {
+  return v >= 80 ? '#2E7D5B' : v >= 50 ? '#B8801A' : '#B23A48';
+}
+
+function renderParentReport() {
+  const r = PARENT_REPORT;
+  const sorted = [...r.concepts].sort((a, b) => b.delta - a.delta); // most-improved first
+  const attentionPosition = (r.exam.predicted.mid / 100) * 100;
+
+  const html = `
+    <div class="report-header">
+      <div class="eyebrow">${r.week.dateline}</div>
+      <h1>${r.child.name} · ${r.week.range}</h1>
+      <p class="lede">
+        這週孩子在 <strong>${r.teacher.name}</strong>「<strong>${r.topic}</strong>」單元上整體理解度
+        <span class="delta up">${r.overall.delta} 分</span>
+        — 從上週 ${r.overall.lastWeek}% 提升到 <strong>${r.overall.current}%</strong>。
+      </p>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="label">整體理解度</div>
+        <div class="value">${r.overall.current}%</div>
+        <div class="sub up">↑ ${r.overall.delta} 分（較上週）</div>
+      </div>
+      <div class="kpi">
+        <div class="label">本週練習</div>
+        <div class="value">${r.engagement.problems} <span class="dim small mono" style="font-size: 13px;">題</span></div>
+        <div class="sub">正確率 ${r.engagement.accuracy}% · 約 ${r.engagement.studyTime}</div>
+      </div>
+      <div class="kpi">
+        <div class="label">段考準備度</div>
+        <div class="value">${r.exam.readiness}%</div>
+        <div class="sub">${r.exam.name} · ${r.exam.daysAway} 天後</div>
+      </div>
+    </div>
+
+    <div class="section-h">
+      <h2>本週進步幅度（過去 4 週）</h2>
+      <span class="hint">由低到高排序 · 顯示每週理解度趨勢</span>
+    </div>
+    <div class="card" style="padding: 4px 18px;">
+      ${sorted.map(c => `
+        <div class="improvement-row">
+          <div class="name">
+            ${c.name}
+            <span class="sub">第 ${5 - c.history.length + 1} 週 → 本週</span>
+          </div>
+          <div class="spark-cell">${sparkline(c.history, tierColor(c.current))}</div>
+          <div class="pct">${c.current}%</div>
+          <div class="delta ${c.delta > 0 ? 'up' : c.delta < 0 ? 'down' : 'flat'}">${c.delta > 0 ? '+' : ''}${c.delta}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="section-h">
+      <h2>需要您關注</h2>
+      <span class="hint">本週唯一低於目標的概念</span>
+    </div>
+    <div class="attention-card">
+      <div class="label">建議行動 · ATTENTION</div>
+      <div class="head">
+        <span class="concept">${r.attention.concept}</span>
+        <span class="meta">目前 ${r.attention.current}% · 目標 ${r.attention.target}%</span>
+      </div>
+      <div class="body">
+        ${r.attention.note}<br><br>
+        <strong>${r.attention.suggestion}</strong>
+      </div>
+      <div class="practice">
+        ${r.attention.practice.map(q => `<div class="q">${q}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="section-h">
+      <h2>段考預測</h2>
+      <span class="hint">基於目前理解度趨勢推估 · 仍可改變</span>
+    </div>
+    <div class="prediction-card">
+      <div class="row" style="align-items: baseline;">
+        <div>
+          <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 2px;">${r.exam.name} 預測分數</div>
+          <div style="font-size: 26px; font-weight: 600; letter-spacing: -0.01em;">${r.exam.predicted.mid} <span class="mono dim" style="font-size: 13px; font-weight: 400;">± ${r.exam.predicted.mid - r.exam.predicted.low} 分</span></div>
+        </div>
+        <span class="spacer"></span>
+        <div class="small muted">${r.exam.daysAway} 天後</div>
+      </div>
+      <div class="prediction-band">
+        <div class="band-range" style="left: ${r.exam.predicted.low}%; right: ${100 - r.exam.predicted.high}%;"></div>
+        <div class="marker" style="left: ${r.exam.predicted.mid}%;"></div>
+        <span class="tick" style="left: 60%;">60 分</span>
+        <span class="tick" style="left: 80%;">80 分</span>
+        <span class="tick" style="left: 100%;">100</span>
+      </div>
+      <div class="small muted" style="margin-top: 22px;">${r.exam.note}</div>
+    </div>
+
+    <div class="section-h">
+      <h2>這週您可以做的兩件事</h2>
+      <span class="hint">簡單具體 · 不必每件都做</span>
+    </div>
+    <div class="action-list">
+      ${r.actions.map((a, i) => `
+        <div class="action-item">
+          <div class="action-num">${i + 1}</div>
+          <div class="action-body">
+            <div class="title">${a.title}</div>
+            <div class="desc">${a.desc}</div>
+            <span class="time">${a.time}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="parent-footer">
+      <span class="item">由 TCS Tutor 自動產生</span>
+      <span class="item">${r.teacher.name} 可看到同樣資料</span>
+      <span class="item">回覆 STOP 取消每週報告</span>
+      <span class="item">問題請聯絡 ${r.teacher.name} 或 TCS 行政</span>
+    </div>
+  `;
+
+  document.getElementById('parent-main').innerHTML = html;
+}
 
 // Initialize
 setRole('teacher');
