@@ -17,7 +17,7 @@
 //   node cli/replay-webhook.js text "review" --user-id U_DEMO
 //   node cli/replay-webhook.js mode review --user-id U_DEMO
 
-import 'dotenv/config';
+import '../lib/env.js';
 import crypto from 'node:crypto';
 
 const SECRET = process.env.LINE_CHANNEL_SECRET;

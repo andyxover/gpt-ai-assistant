@@ -14,7 +14,7 @@
 //   --html-out <path>       Write rendered HTML to this path (default: /tmp/tcs-report.html)
 //   --skip-narrative        Use the deterministic fallback narrative (free, no API call)
 
-import 'dotenv/config';
+import '../lib/env.js';
 import { writeFileSync } from 'node:fs';
 import { pool, close } from '../lib/db.js';
 import { renderWeeklyReport } from '../services/report-renderer.js';

@@ -8,8 +8,8 @@
     "start": "node api/server.js",
     "dev": "node --watch api/server.js",
     "parse-syllabus": "node cli/parse-syllabus.js",
-    "db:init": "psql $DATABASE_URL -f db/schema.sql",
-    "db:reset": "psql $DATABASE_URL -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' && npm run db:init"
+    "db:init": "set -a && . ./.env && set +a && psql \"$DATABASE_URL\" -f db/schema.sql",
+    "db:reset": "set -a && . ./.env && set +a && psql \"$DATABASE_URL\" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' && npm run db:init"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",

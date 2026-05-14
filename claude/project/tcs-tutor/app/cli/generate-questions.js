@@ -18,7 +18,7 @@
 //   node cli/generate-questions.js samples/science-7-syllabus.txt \
 //     --concept cell_membrane --count 5 --verbose
 
-import 'dotenv/config';
+import '../lib/env.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseSyllabus } from '../services/syllabus-parser.js';

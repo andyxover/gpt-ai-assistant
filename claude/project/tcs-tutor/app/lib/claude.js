@@ -24,8 +24,8 @@ export function estimateCostUSD(model, usage) {
 
 /**
  * Ask Claude for strict JSON output.
- * Uses assistant-prefill with `{` to force JSON-shaped output and avoid
- * markdown code fences. Validates JSON; throws if unparseable.
+ * Extracts the first `{...}` block from the response and JSON-parses it.
+ * Validates JSON; throws if unparseable.
  *
  * @param {object} opts
  * @param {string} opts.system - System prompt
@@ -41,28 +41,22 @@ export async function askJSON({ system, user, model, maxTokens = 4096 }) {
     max_tokens: maxTokens,
     system,
     messages: [
-      { role: 'user', content: user },
-      { role: 'assistant', content: '{' }  // prefill: force JSON object
+      { role: 'user', content: user }
     ]
   });
 
-  const text = '{' + response.content
+  const raw = response.content
     .filter(b => b.type === 'text')
     .map(b => b.text)
     .join('');
 
+  const text = extractJSONObject(raw);
+
   let data;
   try {
     data = JSON.parse(text);
-  } catch (err) {
-    // One repair attempt — trim to the last `}` in case the model added trailing prose.
-    const lastBrace = text.lastIndexOf('}');
-    if (lastBrace > 0) {
-      try { data = JSON.parse(text.slice(0, lastBrace + 1)); }
-      catch { throw new Error(`Claude returned unparseable JSON. First 200 chars: ${text.slice(0, 200)}`); }
-    } else {
-      throw new Error(`Claude returned no JSON object. First 200 chars: ${text.slice(0, 200)}`);
-    }
+  } catch {
+    throw new Error(`Claude returned unparseable JSON. First 200 chars: ${raw.slice(0, 200)}`);
   }
 
   return {
@@ -71,4 +65,15 @@ export async function askJSON({ system, user, model, maxTokens = 4096 }) {
     costUSD: estimateCostUSD(useModel, response.usage),
     model: useModel
   };
+}
+
+// Pull the first balanced {...} block out of a response.
+// Tolerates leading prose, markdown fences, and trailing commentary.
+function extractJSONObject(raw) {
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start < 0 || end < 0 || end <= start) {
+    throw new Error(`Claude returned no JSON object. First 200 chars: ${raw.slice(0, 200)}`);
+  }
+  return raw.slice(start, end + 1);
 }

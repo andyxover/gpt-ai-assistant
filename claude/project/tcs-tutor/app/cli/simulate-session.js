@@ -21,7 +21,7 @@
 // Re-running with the same syllabus reuses seeded entities. Pass
 // --reuse-questions to skip regeneration if you've run it once already.
 
-import 'dotenv/config';
+import '../lib/env.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pool, query, tx, close } from '../lib/db.js';

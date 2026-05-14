@@ -5,7 +5,7 @@
 // Reads a syllabus file, sends it through the parser, prints the
 // structured JSON plus token usage and cost.
 
-import 'dotenv/config';
+import '../lib/env.js';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseSyllabus } from '../services/syllabus-parser.js';
