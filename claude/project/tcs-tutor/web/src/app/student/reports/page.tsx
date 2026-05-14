@@ -49,68 +49,68 @@ export default async function LearningReportsPage() {
   const days = Number(summary?.active_days ?? 0);
 
   return (
-    <main className="max-w-3xl mx-auto p-6 sm:p-8">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold">Learning reports</h1>
-        <p className="text-stone-600 mt-1">How your practice has been going across the semester.</p>
-      </header>
+    <>
+      <div className="eyebrow">Reports</div>
+      <h1>Learning reports</h1>
+      <p className="subtitle">How your practice has been going across the semester.</p>
 
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-        <StatCard label="Questions answered" big={String(total)} />
-        <StatCard label="Accuracy" big={`${accuracy}%`} sub={`${correct} correct`} />
-        <StatCard label="Days practiced" big={String(days)} />
-      </section>
+      <div className="kpi-grid">
+        <div className="kpi">
+          <div className="label">Questions answered</div>
+          <div className="value">{total}</div>
+          <div className="sub">across {days} {days === 1 ? 'day' : 'days'}</div>
+        </div>
+        <div className="kpi">
+          <div className="label">Accuracy</div>
+          <div className="value">{accuracy}%</div>
+          <div className="sub">{correct} correct of {total}</div>
+        </div>
+        <div className="kpi">
+          <div className="label">Concepts touched</div>
+          <div className="value">{mastery.length}</div>
+          <div className="sub">at least one attempt</div>
+        </div>
+      </div>
 
-      <section>
-        <h2 className="font-semibold mb-3">Mastery by concept</h2>
-        {mastery.length === 0 ? (
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-center">
-            <p className="text-stone-600">No mastery data yet — practice some questions and check back.</p>
-          </div>
-        ) : (
-          <div className="bg-white border border-stone-200 rounded-2xl divide-y divide-stone-100">
-            {mastery.map(m => {
-              const score = Math.round(Number(m.score));
-              return (
-                <div key={m.code} className="px-5 py-3">
-                  <div className="flex items-baseline justify-between mb-1.5">
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{m.name}</p>
-                      <p className="text-xs text-stone-500 mt-0.5">
-                        {m.chapter_title ?? '(no chapter)'} · W{m.week_introduced}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0 pl-3">
-                      <p className="font-semibold text-stone-900">{score}<span className="text-stone-400 text-sm">/100</span></p>
-                      <p className="text-xs text-stone-500 mt-0.5">{m.correct_count}/{m.attempts_count}</p>
+      <div className="section-h">
+        <h2>Mastery by concept</h2>
+        <span className="hint">higher = stronger</span>
+      </div>
+
+      {mastery.length === 0 ? (
+        <div className="empty-illust">No mastery data yet — practice some questions and check back.</div>
+      ) : (
+        <div className="card" style={{ padding: '6px 0' }}>
+          {mastery.map(m => {
+            const score = Math.round(Number(m.score));
+            const tier = score >= 80 ? 'high' : score >= 50 ? 'mid' : 'low';
+            const tierColor =
+              tier === 'high' ? 'var(--success)' :
+              tier === 'mid' ? 'var(--warn)' :
+              'var(--danger)';
+            return (
+              <div key={m.code} style={{ padding: '12px 18px', borderBottom: '1px solid var(--border-soft)' }}>
+                <div className="row" style={{ marginBottom: 6 }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{m.name}</div>
+                    <div className="mono small dim" style={{ marginTop: 2 }}>
+                      {m.chapter_title ?? '(no chapter)'} · W{m.week_introduced}
                     </div>
                   </div>
-                  <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
-                    <div className={`h-full transition-all ${tierClass(score)}`} style={{ width: `${score}%` }} />
+                  <div className="spacer"></div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div className="mono" style={{ fontSize: 14, fontWeight: 600 }}>{score}<span className="dim">/100</span></div>
+                    <div className="mono small dim" style={{ marginTop: 2 }}>{m.correct_count}/{m.attempts_count}</div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-    </main>
+                <div style={{ height: 6, background: 'var(--border-soft)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${score}%`, background: tierColor, transition: 'width .3s ease' }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
-}
-
-function StatCard({ label, big, sub }: { label: string; big: string; sub?: string }) {
-  return (
-    <div className="bg-white border border-stone-200 rounded-2xl p-4">
-      <p className="text-[11px] font-mono uppercase tracking-wide text-stone-500">{label}</p>
-      <p className="text-2xl font-semibold mt-1">{big}</p>
-      {sub && <p className="text-xs text-stone-500 mt-0.5">{sub}</p>}
-    </div>
-  );
-}
-
-function tierClass(score: number): string {
-  if (score >= 80) return 'bg-green-500';
-  if (score >= 50) return 'bg-[#c9874a]';
-  if (score >= 25) return 'bg-amber-400';
-  return 'bg-red-400';
 }

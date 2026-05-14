@@ -12,13 +12,13 @@ export default async function StudentLayout({ children }: { children: React.Reac
   const activeClassId = classes[0]?.id;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="app">
       <StudentSidebar
         user={{ display_name: user.display_name }}
         classes={classes}
         activeClassId={activeClassId}
       />
-      <div className="flex-1">{children}</div>
+      <main className="main">{children}</main>
     </div>
   );
 }

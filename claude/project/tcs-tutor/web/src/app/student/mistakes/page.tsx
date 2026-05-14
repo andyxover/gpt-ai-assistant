@@ -33,56 +33,53 @@ export default async function MistakeLogPage() {
   );
 
   return (
-    <main className="max-w-3xl mx-auto p-6 sm:p-8">
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold">Mistake log</h1>
-        <p className="text-stone-600 mt-1">Every question you didn&apos;t quite get — review them so they stick.</p>
-      </header>
+    <>
+      <div className="eyebrow">Review</div>
+      <h1>Mistake log</h1>
+      <p className="subtitle">Every question you didn&apos;t quite get — review them so they stick.</p>
 
       {rows.length === 0 ? (
-        <div className="bg-stone-50 border border-stone-200 rounded-2xl p-6 text-center">
-          <p className="text-stone-600">No mistakes logged yet — go practice and see what trips you up.</p>
-        </div>
+        <div className="empty-illust">No mistakes logged yet — go practice and see what trips you up.</div>
       ) : (
-        <ul className="space-y-4">
-          {rows.map(m => {
-            const options = normalizeOptions(m.options);
-            const wrongPick = options.find(o => o.letter === m.answer_letter);
-            const correctPick = options.find(o => o.letter === m.correct_letter);
-            return (
-              <li key={m.attempt_id} className="bg-white border border-stone-200 rounded-2xl p-5">
-                <div className="flex items-baseline justify-between mb-2">
-                  <p className="text-sm font-medium text-[#a86a36]">{m.concept_name}</p>
-                  <p className="text-xs text-stone-500">{new Date(m.created_at).toLocaleString()}</p>
-                </div>
-                <p className="text-stone-900 mb-3 whitespace-pre-wrap">{m.body}</p>
+        rows.map(m => {
+          const options = normalizeOptions(m.options);
+          const wrongPick = options.find(o => o.letter === m.answer_letter);
+          const correctPick = options.find(o => o.letter === m.correct_letter);
+          return (
+            <div key={m.attempt_id} className="card">
+              <div className="row" style={{ marginBottom: 6 }}>
+                <div className="eyebrow" style={{ margin: 0 }}>{m.concept_name}</div>
+                <div className="spacer"></div>
+                <span className="mono small dim">{new Date(m.created_at).toLocaleString()}</span>
+              </div>
+              <p style={{ margin: '8px 0 14px', whiteSpace: 'pre-wrap' }}>{m.body}</p>
 
-                <div className="space-y-2 mb-3">
-                  {wrongPick && (
-                    <div className="px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-sm">
-                      <span className="font-semibold mr-2 text-red-700">You picked {m.answer_letter})</span>
-                      {wrongPick.text}
-                    </div>
-                  )}
-                  {correctPick && (
-                    <div className="px-3 py-2 rounded-lg border border-green-200 bg-green-50 text-sm">
-                      <span className="font-semibold mr-2 text-green-700">Correct: {m.correct_letter})</span>
-                      {correctPick.text}
-                    </div>
-                  )}
-                </div>
-
-                {m.explanation && (
-                  <p className="text-sm text-stone-700 leading-relaxed border-l-2 border-stone-200 pl-3">
-                    {m.explanation}
-                  </p>
+              <div className="quiz" style={{ marginTop: 0 }}>
+                {wrongPick && (
+                  <div className="opt wrong">
+                    <span className="letter">{m.answer_letter}</span>
+                    <span style={{ flex: 1 }}>{wrongPick.text}</span>
+                    <span className="mono small">you picked</span>
+                  </div>
                 )}
-              </li>
-            );
-          })}
-        </ul>
+                {correctPick && (
+                  <div className="opt correct">
+                    <span className="letter">{m.correct_letter}</span>
+                    <span style={{ flex: 1 }}>{correctPick.text}</span>
+                    <span className="mono small">correct</span>
+                  </div>
+                )}
+                {m.explanation && (
+                  <div className="feedback ok" style={{ background: 'var(--surface-2)', color: 'var(--text)', borderLeft: '3px solid var(--accent)' }}>
+                    {m.explanation}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })
       )}
-    </main>
+    </>
   );
 }
 

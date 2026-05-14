@@ -16,7 +16,6 @@ const STRINGS = {
     examPrediction: 'Exam prediction',
     messageTeacher: 'Message teacher',
     notifications: 'Notification preferences',
-    parentLabel: 'Parent',
   },
   zh: {
     myChildren: '我的孩子',
@@ -27,7 +26,6 @@ const STRINGS = {
     examPrediction: '考試預測',
     messageTeacher: '訊息老師',
     notifications: '通知偏好',
-    parentLabel: '家長',
   },
 } as const;
 
@@ -68,109 +66,69 @@ export default function ParentSidebar(props: {
   }
 
   return (
-    <aside className="hidden lg:flex w-64 bg-white border-r border-stone-200 flex-col">
-      <div className="p-5 border-b border-stone-100 flex items-center justify-between">
-        <div>
-          <h2 className="font-semibold">TCS Tutor</h2>
-          <p className="text-xs text-stone-500 mt-0.5">{L.parentLabel}</p>
+    <aside className="sidebar">
+      <div className="sidebar-section">
+        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 12, padding: '0 4px' }}>
+          <div className="sidebar-label" style={{ margin: 0, padding: 0 }}>{L.myChildren}</div>
+          <div className="lang-toggle" style={{ padding: 2 }}>
+            <button onClick={() => toggleLang('en')} disabled={pending} className={props.lang === 'en' ? 'active' : ''} style={{ fontSize: 11, padding: '3px 8px' }}>EN</button>
+            <button onClick={() => toggleLang('zh')} disabled={pending} className={props.lang === 'zh' ? 'active' : ''} style={{ fontSize: 11, padding: '3px 8px' }}>中</button>
+          </div>
         </div>
-        <div className="flex gap-1 text-[11px]">
-          <button
-            onClick={() => toggleLang('en')}
-            disabled={pending}
-            className={`px-2 py-0.5 rounded ${props.lang === 'en' ? 'bg-[#fdf6ec] text-[#a86a36] font-semibold' : 'text-stone-500 hover:text-stone-900'}`}
-          >EN</button>
-          <button
-            onClick={() => toggleLang('zh')}
-            disabled={pending}
-            className={`px-2 py-0.5 rounded ${props.lang === 'zh' ? 'bg-[#fdf6ec] text-[#a86a36] font-semibold' : 'text-stone-500 hover:text-stone-900'}`}
-          >中</button>
-        </div>
+        {props.children.length === 0 && (
+          <div className="sidebar-item" style={{ color: 'var(--text-dim)' }}>No children linked</div>
+        )}
+        {props.children.map(c => {
+          const active = c.id === activeChildId;
+          const params = new URLSearchParams(search.toString());
+          params.set('child', c.id);
+          return (
+            <Link
+              key={c.id}
+              href={`${pathname}?${params.toString()}`}
+              className={`sidebar-item ${active ? 'active' : ''}`}
+            >
+              <span style={{ flex: 1 }}>{c.display_name}</span>
+              {c.section && <span className="badge">{c.section}</span>}
+            </Link>
+          );
+        })}
       </div>
 
-      <nav className="p-4 flex-1 overflow-y-auto">
-        <SidebarLabel>{L.myChildren}</SidebarLabel>
-        <ul className="mb-6 space-y-0.5">
-          {props.children.length === 0 && (
-            <li className="text-xs text-stone-400 px-3 py-1.5">No children linked</li>
-          )}
-          {props.children.map(c => {
-            const active = c.id === activeChildId;
-            const search2 = new URLSearchParams(search.toString());
-            search2.set('child', c.id);
-            return (
-              <li key={c.id}>
-                <Link
-                  href={`${pathname}?${search2.toString()}`}
-                  className={`flex items-center justify-between px-3 py-1.5 rounded-md text-sm ${
-                    active ? 'bg-[#fdf6ec] text-[#a86a36] font-medium' : 'text-stone-700 hover:bg-stone-50'
-                  }`}
-                >
-                  <span className="truncate">{c.display_name}</span>
-                  {c.section && (
-                    <span className="text-[10px] font-mono bg-stone-200 text-stone-700 px-1.5 py-0.5 rounded shrink-0">
-                      {c.section}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      <div className="sidebar-section">
+        <div className="sidebar-label">{L.reports}</div>
+        {reportItems.map(item => {
+          const active = pathname === item.href || pathname.startsWith(item.href + '/');
+          return (
+            <Link
+              key={item.href}
+              href={navWithChild(item.href)}
+              className={`sidebar-item ${active ? 'active' : ''}`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
 
-        <SidebarLabel>{L.reports}</SidebarLabel>
-        <ul className="mb-6 space-y-0.5">
-          {reportItems.map(item => {
-            const active = pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <li key={item.href}>
-                <Link
-                  href={navWithChild(item.href)}
-                  className={`block px-3 py-1.5 rounded-md text-sm ${
-                    active ? 'bg-[#fdf6ec] text-[#a86a36] font-medium' : 'text-stone-700 hover:bg-stone-50'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+      <div className="sidebar-section">
+        <div className="sidebar-label">{L.settings}</div>
+        {settingsItems.map(item => {
+          const active = pathname === item.href;
+          return (
+            <Link key={item.href} href={item.href} className={`sidebar-item ${active ? 'active' : ''}`}>
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
 
-        <SidebarLabel>{L.settings}</SidebarLabel>
-        <ul className="space-y-0.5">
-          {settingsItems.map(item => {
-            const active = pathname === item.href;
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`block px-3 py-1.5 rounded-md text-sm ${
-                    active ? 'bg-[#fdf6ec] text-[#a86a36] font-medium' : 'text-stone-700 hover:bg-stone-50'
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      <div className="p-4 border-t border-stone-100 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-green-700 text-white flex items-center justify-center text-sm font-medium shrink-0">
+      <div className="me">
+        <div className="avatar" style={{ background: 'var(--success)' }}>
           {(props.user.display_name?.[0] ?? '?').toUpperCase()}
         </div>
-        <p className="text-sm font-medium truncate">{props.user.display_name}</p>
+        <div style={{ fontSize: 13, fontWeight: 500 }}>{props.user.display_name}</div>
       </div>
     </aside>
-  );
-}
-
-function SidebarLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[11px] uppercase tracking-wider font-medium text-stone-400 px-3 mb-1.5">
-      {children}
-    </p>
   );
 }

@@ -1,6 +1,5 @@
 import { getTutorUser } from '@/lib/tutor/role';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { startSession } from './actions';
 import PracticeClient from './PracticeClient';
 
@@ -10,6 +9,12 @@ const MODE_LABELS: Record<Mode, string> = {
   review: 'Review',
   preview: 'Preview',
   exam_prep: 'Exam prep',
+};
+
+const MODE_BLURBS: Record<Mode, string> = {
+  review: 'Practicing concepts you\'ve already covered. The mastery engine picks what you need most.',
+  preview: 'Looking ahead at upcoming material.',
+  exam_prep: 'Targeted practice before a test.',
 };
 
 export default async function PracticePage({
@@ -28,21 +33,16 @@ export default async function PracticePage({
   const session = await startSession(mode);
 
   return (
-    <main className="max-w-2xl mx-auto p-6 sm:p-8">
-      <header className="mb-6 flex items-baseline justify-between">
-        <div>
-          <Link href="/student" className="text-sm text-stone-500 hover:underline">← Modes</Link>
-          <h1 className="text-2xl font-bold mt-1">{MODE_LABELS[mode]}</h1>
-        </div>
-        <p className="text-sm text-stone-500">{user.display_name}</p>
-      </header>
+    <>
+      <div className="eyebrow">Practice · {MODE_LABELS[mode]}</div>
+      <h1>{MODE_LABELS[mode]}</h1>
+      <p className="subtitle">{MODE_BLURBS[mode]}</p>
 
       {!session.ok ? (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-          <p className="text-stone-700">{session.error}</p>
-          <Link href="/student" className="inline-block mt-4 text-sm text-[#a86a36] hover:underline">
-            ← Back to modes
-          </Link>
+        <div className="card">
+          <div className="card-title">Can&apos;t start a session</div>
+          <div className="card-desc">{session.error}</div>
+          <a href="/student" className="btn secondary small" style={{ marginTop: 12 }}>← Back</a>
         </div>
       ) : (
         <PracticeClient
@@ -51,6 +51,6 @@ export default async function PracticePage({
           initialError={session.error}
         />
       )}
-    </main>
+    </>
   );
 }

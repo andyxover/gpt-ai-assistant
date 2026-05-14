@@ -7,6 +7,7 @@ import type { ChatMessage } from '@/lib/tutor/chat';
 export default function ChatClient(props: {
   initialMessages: ChatMessage[];
   scopeLabel: string | null;
+  studentInitial: string;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(props.initialMessages);
   const [pending, startTransition] = useTransition();
@@ -16,7 +17,7 @@ export default function ChatClient(props: {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, pending]);
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -52,49 +53,35 @@ export default function ChatClient(props: {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] max-h-[800px]">
-      <header className="px-1 pb-3 border-b border-stone-200">
-        <h1 className="text-2xl font-bold">Ask the tutor</h1>
-        {props.scopeLabel && (
-          <p className="text-xs text-stone-500 mt-1">
-            Scope:{' '}
-            <span className="text-[#a86a36]">{props.scopeLabel}</span>
-          </p>
-        )}
-      </header>
+    <div className="chat">
+      <div className="chat-head">
+        <div className="avatar">TT</div>
+        <div>
+          <div className="title">TCS Tutor</div>
+          <div className="sub">Socratic — I won&apos;t just give you the answer</div>
+        </div>
+        {props.scopeLabel && <span className="chat-scope-tag">Scope: {props.scopeLabel}</span>}
+      </div>
 
-      <div className="flex-1 overflow-y-auto py-4 space-y-3">
+      <div className="chat-body" style={{ maxHeight: 'calc(100vh - 280px)', minHeight: 380 }}>
         {messages.length === 0 && (
-          <div className="text-center text-stone-500 text-sm py-12 max-w-md mx-auto">
-            <p className="mb-2">Hi! I&apos;m your tutor. Ask me anything about this week&apos;s concepts.</p>
-            <p className="text-xs text-stone-400">
-              I won&apos;t just give you answers — I&apos;ll help you think through them.
-            </p>
+          <div className="empty-illust">
+            Ask me anything about this week&apos;s concepts.
           </div>
         )}
 
         {messages.map(m => (
-          <div key={m.id} className={`flex ${m.role === 'student' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed ${
-                m.role === 'student'
-                  ? 'bg-[#c9874a] text-white'
-                  : 'bg-white border border-stone-200 text-stone-800'
-              }`}
-            >
-              {m.content}
-            </div>
+          <div key={m.id} className={`msg ${m.role === 'student' ? 'user' : 'ai'}`}>
+            <div className="ava">{m.role === 'student' ? props.studentInitial : 'AI'}</div>
+            <div className="bubble">{m.content}</div>
           </div>
         ))}
 
         {pending && (
-          <div className="flex justify-start">
-            <div className="bg-white border border-stone-200 text-stone-500 text-sm px-4 py-2.5 rounded-2xl">
-              <span className="inline-flex gap-1">
-                <span className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-pulse"></span>
-                <span className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></span>
-                <span className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></span>
-              </span>
+          <div className="msg ai">
+            <div className="ava">AI</div>
+            <div className="bubble">
+              <span className="typing"><span></span><span></span><span></span></span>
             </div>
           </div>
         )}
@@ -102,23 +89,23 @@ export default function ChatClient(props: {
         <div ref={bottomRef} />
       </div>
 
-      {err && <p className="text-sm text-red-600 mb-2">{err}</p>}
+      {err && (
+        <div style={{ padding: '8px 18px', fontSize: 13, color: 'var(--danger)', background: '#fbeaec' }}>
+          {err}
+        </div>
+      )}
 
-      <form onSubmit={submit} className="flex gap-2 pt-3 border-t border-stone-200">
+      <form onSubmit={submit} className="chat-input">
         <input
           ref={inputRef}
           type="text"
           name="text"
-          placeholder="Ask about this week's concepts..."
+          placeholder="Ask about this week's concepts…"
           disabled={pending}
-          className="flex-1 px-4 py-2.5 border border-stone-300 rounded-lg focus:outline-none focus:border-[#c9874a]"
           autoFocus
+          style={{ flex: 1 }}
         />
-        <button
-          type="submit"
-          disabled={pending}
-          className="px-5 py-2.5 rounded-lg bg-[#c9874a] hover:bg-[#a86a36] disabled:opacity-50 text-white font-medium"
-        >
+        <button type="submit" disabled={pending} className="btn">
           Send
         </button>
       </form>

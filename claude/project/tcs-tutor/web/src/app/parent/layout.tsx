@@ -12,9 +12,9 @@ export default async function ParentLayout({ children }: { children: React.React
   const lang = (user.preferred_lang ?? 'en') as 'en' | 'zh';
 
   return (
-    <div className="flex min-h-screen">
+    <div className="app">
       <ParentSidebar user={{ display_name: user.display_name }} children={kids} lang={lang} />
-      <div className="flex-1">{children}</div>
+      <main className="main">{children}</main>
     </div>
   );
 }

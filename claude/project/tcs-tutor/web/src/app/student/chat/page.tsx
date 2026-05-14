@@ -11,12 +11,10 @@ export default async function ChatPage() {
   const session = await loadOrCreateChatSession(user.id);
   if (!session.id || !session.classId) {
     return (
-      <main className="max-w-3xl mx-auto p-6 sm:p-8">
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-          <p className="font-medium">You&apos;re not enrolled in a class yet.</p>
-          <p className="text-sm text-stone-600 mt-1">Ask your teacher to add you.</p>
-        </div>
-      </main>
+      <div className="card">
+        <div className="card-title">Not enrolled yet</div>
+        <div className="card-desc">Ask your teacher to add you to a class.</div>
+      </div>
     );
   }
 
@@ -26,12 +24,17 @@ export default async function ChatPage() {
   ]);
 
   const scopeLabel = scope.thisWeekConcepts.length
-    ? `${scope.thisWeekConcepts.map(c => c.name).join(', ')} (Week ${scope.weekNumber})`
+    ? `${scope.thisWeekConcepts.map(c => c.name).join(', ')} · W${scope.weekNumber}`
     : null;
 
+  const initial = (user.display_name?.[0] ?? '?').toUpperCase();
+
   return (
-    <main className="max-w-3xl mx-auto p-6 sm:p-8">
-      <ChatClient initialMessages={messages} scopeLabel={scopeLabel} />
-    </main>
+    <>
+      <div className="eyebrow">Ask the tutor</div>
+      <h1>Chat</h1>
+      <p className="subtitle">Free-form Socratic tutoring on this week&apos;s concepts.</p>
+      <ChatClient initialMessages={messages} scopeLabel={scopeLabel} studentInitial={initial} />
+    </>
   );
 }
