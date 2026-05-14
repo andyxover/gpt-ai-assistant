@@ -1,7 +1,6 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { pool } from '@/lib/tutor/db';
 import { parseSyllabus, ParsedScope } from '@/lib/tutor/parse-syllabus';
 import { extractTextFromFile } from '@/lib/tutor/extract-text';
@@ -97,10 +96,14 @@ export async function uploadSyllabus(formData: FormData): Promise<UploadResult> 
     await client.query('COMMIT');
 
     revalidatePath('/teacher/syllabi');
-    redirect(`/teacher/syllabi/${syl.id}`);
+    return {
+      ok: true,
+      syllabusId: syl.id,
+      conceptCount: concepts.length,
+      uncertainties: parsed.scope._uncertainties ?? [],
+    };
   } catch (err) {
     await client.query('ROLLBACK').catch(() => undefined);
-    if (err && typeof err === 'object' && 'digest' in err) throw err; // re-throw Next.js redirect
     return { ok: false, error: `Save failed: ${err instanceof Error ? err.message : String(err)}` };
   } finally {
     client.release();
