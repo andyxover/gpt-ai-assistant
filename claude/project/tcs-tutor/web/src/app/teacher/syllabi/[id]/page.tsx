@@ -2,6 +2,7 @@ import { getTutorUser } from '@/lib/tutor/role';
 import { pool } from '@/lib/tutor/db';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
+import GenerateButton from './GenerateButton';
 
 interface SyllabusRow {
   id: string;
@@ -21,6 +22,7 @@ interface ConceptRow {
   week_introduced: number;
   is_safety_critical: boolean;
   sequence_order: number;
+  question_count: number;
 }
 
 export default async function SyllabusDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -41,8 +43,13 @@ export default async function SyllabusDetail({ params }: { params: Promise<{ id:
   if (!syllabus) notFound();
 
   const { rows: concepts } = await pool.query<ConceptRow>(
-    `SELECT id, code, name, chapter_title, week_introduced, is_safety_critical, sequence_order
-       FROM concepts WHERE syllabus_id = $1 ORDER BY sequence_order`,
+    `SELECT c.id, c.code, c.name, c.chapter_title, c.week_introduced, c.is_safety_critical, c.sequence_order,
+            (SELECT COUNT(*) FROM questions q
+              WHERE q.concept_id = c.id AND q.validation_status = 'approved' AND q.retired_at IS NULL)::int
+              AS question_count
+       FROM concepts c
+      WHERE c.syllabus_id = $1
+      ORDER BY c.sequence_order`,
     [id],
   );
 
@@ -82,15 +89,27 @@ export default async function SyllabusDetail({ params }: { params: Promise<{ id:
             <h2 className="font-semibold mb-2">{chapter}</h2>
             <div className="bg-white border border-stone-200 rounded-xl divide-y divide-stone-100">
               {items.map(c => (
-                <div key={c.id} className="px-4 py-3 flex items-baseline justify-between gap-4">
+                <div key={c.id} className="px-4 py-3 flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="font-medium">{c.name}</p>
-                    <p className="text-xs text-stone-500 mt-0.5 font-mono">{c.code}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-stone-500 font-mono">{c.code}</p>
+                      <span className="text-xs text-stone-400">·</span>
+                      <p className="text-xs text-stone-500">
+                        {c.question_count} {c.question_count === 1 ? 'question' : 'questions'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-stone-500 shrink-0">
-                    <span>W{c.week_introduced}</span>
-                    {c.is_safety_critical && (
-                      <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-800 font-medium">safety</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-xs text-stone-500">W{c.week_introduced}</span>
+                    {c.is_safety_critical ? (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800 font-medium">safety — teacher-authored only</span>
+                    ) : (
+                      <GenerateButton
+                        conceptId={c.id}
+                        syllabusId={syllabus.id}
+                        hasQuestions={c.question_count > 0}
+                      />
                     )}
                   </div>
                 </div>
