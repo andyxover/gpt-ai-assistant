@@ -14,11 +14,16 @@ this folder turns it into a real, deployable system.
       syllabus → structured scope. First working AI service.
 - [x] CLI to test the parser end-to-end (`cli/parse-syllabus.js`)
 - [x] Sample syllabus for testing (`samples/science-7-syllabus.txt`)
+- [x] **Question generator** (`services/question-generator.js`) —
+      concept + difficulty range → batch of MCQs with schema validation
+      and safety-critical refusal.
+- [x] **Multi-pass quality validator** (`services/question-validator.js`)
+      — self-critique + cross-model + fact-anchor → approve / reject /
+      needs_review. Implements DEPLOYMENT.md §3 Layer 2.
 
 ## What's next (in order)
 
-- [ ] Question generator (`services/question-generator.js`)
-- [ ] Multi-pass quality validator (`services/question-validator.js`)
+- [ ] CLI to test generator + validator end-to-end (`cli/generate-questions.js`)
 - [ ] Mastery engine (`services/mastery-engine.js`)
 - [ ] Parent report renderer (`services/report-renderer.js`)
 - [ ] LINE webhook handler (`api/line.js`)
