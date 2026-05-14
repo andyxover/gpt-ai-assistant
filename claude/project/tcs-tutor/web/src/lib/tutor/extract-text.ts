@@ -37,11 +37,25 @@ export async function extractTextFromFile(file: File): Promise<string> {
 
 async function extractPdf(buf: Buffer): Promise<string> {
   try {
-    const mod = await import('pdf-parse');
-    const pdfParse = (mod.default ?? mod) as unknown as (b: Buffer) => Promise<{ text: string }>;
-    const result = await pdfParse(buf);
-    return result.text ?? '';
+    // pdf-parse v2.x uses a class-based API. Convert Buffer → Uint8Array
+    // (the lib accepts Buffer, but being explicit makes it consistent
+    // across bundlers).
+    const { PDFParse } = await import('pdf-parse');
+    const parser = new PDFParse({ data: new Uint8Array(buf) });
+    const result = await parser.getText();
+    await parser.destroy().catch(() => undefined);
+
+    // result.text is undefined for image-only / scanned PDFs.
+    // Combine with per-page text if the lib exposes it differently.
+    const text = (result as unknown as { text?: string }).text ?? '';
+    if (!text.trim()) {
+      throw new Error(
+        'PDF appears to have no embedded text (likely a scanned image). OCR isn\'t wired up yet — paste the text or upload a text PDF.',
+      );
+    }
+    return text;
   } catch (err) {
+    console.error('[extract-text] PDF parse failed:', err);
     throw new Error(`Could not read PDF: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
@@ -55,6 +69,7 @@ async function extractDocx(buf: Buffer): Promise<string> {
     const result = await mammoth.extractRawText({ buffer: buf });
     return result.value ?? '';
   } catch (err) {
+    console.error('[extract-text] DOCX parse failed:', err);
     throw new Error(`Could not read DOCX: ${err instanceof Error ? err.message : String(err)}`);
   }
 }

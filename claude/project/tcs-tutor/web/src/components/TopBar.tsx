@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { getTutorUser } from '@/lib/tutor/role';
+import { getTutorUser, activeDevUserId } from '@/lib/tutor/role';
+import RoleToggle from './RoleToggle';
 
 const ROLE_HOME: Record<string, string> = {
   teacher: '/teacher',
@@ -9,8 +10,15 @@ const ROLE_HOME: Record<string, string> = {
 };
 
 export default async function TopBar() {
-  const user = await getTutorUser();
+  const [user, devId] = await Promise.all([getTutorUser(), activeDevUserId()]);
   const home = user ? (ROLE_HOME[user.role] ?? '/') : '/';
+  const isDev = !!devId;
+
+  // Map the current user role to one of the three toggle slots
+  const toggleRole: 'teacher' | 'student' | 'parent' =
+    user?.role === 'student' ? 'student' :
+    user?.role === 'parent'  ? 'parent'  :
+    'teacher';
 
   return (
     <div className="topbar">
@@ -19,14 +27,18 @@ export default async function TopBar() {
         <span className="brand-name">TCS Tutor</span>
         <span className="brand-tag">v0</span>
       </Link>
-      {user && (
-        <div className="row" style={{ gap: 12 }}>
-          <span className="mono small dim">{user.role}</span>
-          <div className="avatar" title={user.display_name}>
-            {(user.display_name?.[0] ?? '?').toUpperCase()}
+
+      <div className="row" style={{ gap: 16 }}>
+        {isDev && <RoleToggle current={toggleRole} />}
+        {user && (
+          <div className="row" style={{ gap: 8 }}>
+            <span className="mono small dim">{user.role}</span>
+            <div className="avatar" title={user.display_name}>
+              {(user.display_name?.[0] ?? '?').toUpperCase()}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
