@@ -55,6 +55,7 @@ function verifySignature(rawBody, signature) {
 // ──────────────────────────────────────────────────────────────────────────
 
 async function handleEvent(event) {
+  console.log(`[LINE event] type=${event.type} userId=${event.source?.userId ?? '(none)'} text=${event.message?.text ?? ''}`);
   if (event.type === 'follow') return onFollow(event);
   if (event.type === 'unfollow') return onUnfollow(event);
   if (event.type === 'message' && event.message?.type === 'text') return onText(event);

@@ -4,6 +4,11 @@ import { handleLineWebhook } from './line.js';
 
 const app = express();
 
+app.use((req, _res, next) => {
+  console.log(new Date().toISOString(), req.method, req.url);
+  next();
+});
+
 // LINE webhook needs the raw body for HMAC signature verification.
 app.post('/webhook/line', express.raw({ type: 'application/json' }), handleLineWebhook);
 
