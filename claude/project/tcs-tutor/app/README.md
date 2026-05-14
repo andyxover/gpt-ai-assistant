@@ -25,10 +25,15 @@ this folder turns it into a real, deployable system.
       — parse → generate → validate, with per-question decisions, cost,
       and a 95%-bar warning when the batch is below the DEPLOYMENT §3
       threshold.
+- [x] **Mastery engine** (`services/mastery-engine.js`) — transactional
+      attempt recording, EMA-based mastery update, adaptive concept
+      selector (review / preview / exam-prep with prereq gating), and
+      difficulty-banded question selector with anti-repeat window.
 
 ## What's next (in order)
 
-- [ ] Mastery engine (`services/mastery-engine.js`)
+- [ ] DB seeder + CLI to drive a simulated student session end-to-end
+      (`cli/simulate-session.js`)
 - [ ] Parent report renderer (`services/report-renderer.js`)
 - [ ] LINE webhook handler (`api/line.js`)
 - [ ] Teacher dashboard (separate Next.js subapp)
