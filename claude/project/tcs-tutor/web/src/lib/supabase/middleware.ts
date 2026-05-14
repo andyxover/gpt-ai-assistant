@@ -4,6 +4,12 @@ import { NextResponse, type NextRequest } from 'next/server';
 const PUBLIC_PATHS = ['/login', '/auth/callback'];
 
 export async function refreshSession(request: NextRequest) {
+  // Dev-mode bypass: when TUTOR_DEV_USER_ID is set, skip the auth gate
+  // entirely so pages can render against a fake user via getTutorUser().
+  if (process.env.TUTOR_DEV_USER_ID?.trim()) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
