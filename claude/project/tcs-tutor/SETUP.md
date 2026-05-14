@@ -31,15 +31,23 @@ And on your machine:
 
 ## Step 1 — Clone & install (~3 min)
 
+The code lives on a feature branch in the `gpt-ai-assistant` repo. The
+app itself is in a subfolder; all the commands in this guide run from
+that subfolder.
+
 ```bash
-git clone <this-repo>
-cd gpt-ai-assistant/claude/project/tcs-tutor/app
+git clone https://github.com/andyxover/gpt-ai-assistant.git
+cd gpt-ai-assistant
+git checkout claude/ai-tutoring-platform-AuElt
+cd claude/project/tcs-tutor/app          # ← this is "the app folder"
 npm install
 cp .env.example .env
 ```
 
-Leave `.env` open in a text editor — you'll paste several values into
-it over the next steps.
+After this you should be sitting in `.../tcs-tutor/app/` with a fresh
+`.env` file and `node_modules/` populated. Every later step runs from
+this same folder. Leave `.env` open in a text editor — you'll paste
+several values into it over the next steps.
 
 ---
 
