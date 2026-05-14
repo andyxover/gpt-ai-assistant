@@ -10,16 +10,19 @@ export default async function TeacherClasses() {
 
   const classes = await listClassesForTeacher(user.id);
 
-  // If exactly one class, go straight to it.
-  if (classes.length === 1) {
-    redirect(`/teacher/classes/${classes[0].id}/progress`);
-  }
-
   return (
     <main className="max-w-3xl mx-auto p-8">
       <header className="mb-8">
         <Link href="/teacher" className="text-sm text-stone-500 hover:underline">← Back</Link>
-        <h1 className="text-3xl font-bold mt-2">Classes</h1>
+        <div className="flex items-baseline justify-between mt-2">
+          <h1 className="text-3xl font-bold">Classes</h1>
+          <Link
+            href="/teacher/classes/new"
+            className="text-sm px-4 py-2 rounded-lg bg-[#c9874a] hover:bg-[#a86a36] text-white font-medium"
+          >
+            New class
+          </Link>
+        </div>
       </header>
 
       {classes.length === 0 ? (
