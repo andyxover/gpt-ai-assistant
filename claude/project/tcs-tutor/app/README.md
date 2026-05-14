@@ -33,10 +33,14 @@ this folder turns it into a real, deployable system.
       seeds demo class + student, builds a validated question pool,
       runs a simulated session against the mastery engine. First time
       the whole stack runs as one program.
+- [x] **Parent report renderer** (`services/report-renderer.js` +
+      `cli/render-report.js`) — deterministic data + AI narrative on
+      top + EN/ZH labels. Plain text and minimal HTML output, optional
+      persistence into `parent_reports`.
 
 ## What's next (in order)
 
-- [ ] Parent report renderer (`services/report-renderer.js`)
+- [ ] LINE webhook handler (`api/line.js`)
 - [ ] LINE webhook handler (`api/line.js`)
 - [ ] Teacher dashboard (separate Next.js subapp)
 - [ ] Eval harness (`evals/`)
@@ -117,6 +121,18 @@ See `../DEPLOYMENT.md` for phase-by-phase plan.
    # Re-run cheaply without regenerating the question pool:
    node cli/simulate-session.js samples/science-7-syllabus.txt \
      --reuse-questions --rounds 50
+   ```
+8. Render the parent weekly digest off the data the simulator just
+   produced:
+   ```bash
+   # English, plain output to stdout + HTML to /tmp/tcs-report.html
+   node cli/render-report.js --week 5
+
+   # Traditional Chinese version, persisted to parent_reports table
+   node cli/render-report.js --week 5 --lang zh --persist
+
+   # Deterministic (no AI narrative) — free, useful for diff testing
+   node cli/render-report.js --week 5 --skip-narrative
    ```
 
 You should see structured JSON output and a small cost estimate.
