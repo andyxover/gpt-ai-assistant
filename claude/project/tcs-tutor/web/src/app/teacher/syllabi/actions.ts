@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { pool } from '@/lib/tutor/db';
 import { parseSyllabus, ParsedScope } from '@/lib/tutor/parse-syllabus';
+import { extractTextFromFile } from '@/lib/tutor/extract-text';
 import { getTutorUser } from '@/lib/tutor/role';
 
 export interface UploadResult {
@@ -22,9 +23,28 @@ export async function uploadSyllabus(formData: FormData): Promise<UploadResult> 
 
   const classId = String(formData.get('class_id') ?? '').trim();
   const semester = String(formData.get('semester') ?? 'S1').trim();
-  const rawText = String(formData.get('raw_text') ?? '').trim();
+  const pastedText = String(formData.get('raw_text') ?? '').trim();
+  const file = formData.get('file');
+  const sourceFilename = file instanceof File && file.size > 0 ? file.name : null;
+
   if (!classId) return { ok: false, error: 'class_id is required' };
-  if (rawText.length < 50) return { ok: false, error: 'Syllabus text must be at least 50 characters' };
+
+  // Pull text from the uploaded file if present, otherwise from the textarea.
+  let rawText = pastedText;
+  if (file instanceof File && file.size > 0) {
+    try {
+      rawText = await extractTextFromFile(file);
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  if (rawText.length < 50) {
+    return {
+      ok: false,
+      error: 'Syllabus text must be at least 50 characters. Paste text or upload a PDF/DOCX.',
+    };
+  }
 
   // Parse via Claude
   let parsed;
@@ -48,13 +68,14 @@ export async function uploadSyllabus(formData: FormData): Promise<UploadResult> 
 
     const { rows: [syl] } = await client.query<{ id: string }>(
       `INSERT INTO syllabi
-        (class_id, semester, raw_text, parsed_scope, parser_model, parser_uncertainties, uploaded_by_user_id)
-       VALUES ($1, $2, $3, $4::jsonb, $5, $6::jsonb, $7)
+        (class_id, semester, raw_text, source_filename, parsed_scope, parser_model, parser_uncertainties, uploaded_by_user_id)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7::jsonb, $8)
        RETURNING id`,
       [
         classId,
         semester,
         rawText,
+        sourceFilename,
         JSON.stringify(parsed.scope),
         parsed.model,
         JSON.stringify(parsed.scope._uncertainties ?? []),

@@ -3,6 +3,14 @@ import { pool } from '@/lib/tutor/db';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { uploadSyllabus } from './actions';
+import FileDropZone from './FileDropZone';
+
+const fieldLabelStyle: React.CSSProperties = {
+  display: 'block',
+  marginBottom: 6,
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+};
 
 interface ClassRow {
   id: string;
@@ -68,24 +76,32 @@ export default async function TeacherSyllabiPage() {
           <div className="section-h"><h2>Upload a new syllabus</h2></div>
           <div className="card">
             <form action={uploadSyllabus}>
-              <label className="mono small dim" style={{ display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Class</label>
+              <label className="mono small dim" style={fieldLabelStyle}>Class</label>
               <select name="class_id" required style={{ marginBottom: 14 }}>
                 {classes.map(c => (
                   <option key={c.id} value={c.id}>{c.display_name} ({c.academic_year})</option>
                 ))}
               </select>
 
-              <label className="mono small dim" style={{ display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Semester</label>
+              <label className="mono small dim" style={fieldLabelStyle}>Semester</label>
               <select name="semester" defaultValue="S1" style={{ marginBottom: 14 }}>
                 <option value="S1">Semester 1</option>
                 <option value="S2">Semester 2</option>
               </select>
 
-              <label className="mono small dim" style={{ display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Syllabus text</label>
+              <label className="mono small dim" style={fieldLabelStyle}>Upload a document</label>
+              <FileDropZone />
+
+              <div className="row" style={{ gap: 10, margin: '14px 0', color: 'var(--text-dim)' }}>
+                <span style={{ flex: 1, height: 1, background: 'var(--border-soft)' }}></span>
+                <span className="mono small">or paste below</span>
+                <span style={{ flex: 1, height: 1, background: 'var(--border-soft)' }}></span>
+              </div>
+
+              <label className="mono small dim" style={fieldLabelStyle}>Syllabus text</label>
               <textarea
                 name="raw_text"
-                required
-                rows={14}
+                rows={12}
                 placeholder="Paste the full syllabus text — chapter list, weekly schedule, assessments…"
                 style={{ marginBottom: 14 }}
               />
