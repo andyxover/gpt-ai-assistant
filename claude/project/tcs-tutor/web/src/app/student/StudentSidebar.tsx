@@ -15,6 +15,7 @@ export default function StudentSidebar(props: {
   const learningItems = [
     { href: '/student', label: 'This week' },
     { href: '/student/practice', label: 'Practice' },
+    { href: '/student/chat', label: 'Ask the tutor' },
     { href: '/student/mistakes', label: 'Mistake log' },
     { href: '/student/reports', label: 'Learning reports' },
   ];
