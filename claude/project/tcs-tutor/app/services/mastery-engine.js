@@ -205,6 +205,12 @@ export async function pickNextConcept({ studentId, syllabusId, mode = 'review', 
          ON m.concept_id = c.id AND m.student_id = $1
       WHERE c.syllabus_id = $2
         AND c.week_introduced BETWEEN $3 AND $4
+        AND EXISTS (
+          SELECT 1 FROM questions q
+           WHERE q.concept_id = c.id
+             AND q.validation_status = 'approved'
+             AND q.retired_at IS NULL
+        )
    ORDER BY c.sequence_order`,
     [studentId, syllabusId, weekMin, weekMax, MASTERY_CONFIG.initialScore]
   );

@@ -29,11 +29,13 @@ this folder turns it into a real, deployable system.
       attempt recording, EMA-based mastery update, adaptive concept
       selector (review / preview / exam-prep with prereq gating), and
       difficulty-banded question selector with anti-repeat window.
+- [x] **End-to-end simulation CLI** (`cli/simulate-session.js`) —
+      seeds demo class + student, builds a validated question pool,
+      runs a simulated session against the mastery engine. First time
+      the whole stack runs as one program.
 
 ## What's next (in order)
 
-- [ ] DB seeder + CLI to drive a simulated student session end-to-end
-      (`cli/simulate-session.js`)
 - [ ] Parent report renderer (`services/report-renderer.js`)
 - [ ] LINE webhook handler (`api/line.js`)
 - [ ] Teacher dashboard (separate Next.js subapp)
@@ -105,6 +107,16 @@ See `../DEPLOYMENT.md` for phase-by-phase plan.
    # Generate + validate for one concept
    node cli/generate-questions.js samples/science-7-syllabus.txt \
      --concept cell_membrane --count 5 --verbose
+   ```
+7. Run the full stack end-to-end (seeds DB, generates questions,
+   simulates a student session, prints mastery trajectory):
+   ```bash
+   node cli/simulate-session.js samples/science-7-syllabus.txt \
+     --concepts 3 --rounds 25
+
+   # Re-run cheaply without regenerating the question pool:
+   node cli/simulate-session.js samples/science-7-syllabus.txt \
+     --reuse-questions --rounds 50
    ```
 
 You should see structured JSON output and a small cost estimate.
