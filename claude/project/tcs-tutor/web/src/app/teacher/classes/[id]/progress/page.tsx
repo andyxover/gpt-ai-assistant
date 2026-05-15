@@ -2,6 +2,7 @@ import { getTutorUser } from '@/lib/tutor/role';
 import { getActiveSyllabus, getClassForTeacher } from '@/lib/tutor/classes';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
+import WeekControl from './WeekControl';
 
 type WeekStatus = 'covered' | 'current' | 'next' | 'upcoming';
 
@@ -41,13 +42,18 @@ export default async function ClassProgressPage({ params }: { params: Promise<{ 
   return (
     <>
       <div className="card">
-        <div className="row" style={{ marginBottom: 14 }}>
+        <div className="row" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
           <div>
             <div className="card-title">This semester&apos;s progress</div>
             <div className="card-desc small">Students see &quot;this week&quot; pinned to this progress.</div>
           </div>
           <div className="spacer"></div>
-          <span className="mono small dim">Week {currentWeek}{totalWeeks ? ` / ${totalWeeks}` : ''}</span>
+          <WeekControl
+            classId={id}
+            syllabusId={syllabus.id}
+            initialWeek={currentWeek}
+            totalWeeks={totalWeeks}
+          />
         </div>
         <div className="progress">
           <div className="progress-bar"><div style={{ width: `${percent}%` }} /></div>
