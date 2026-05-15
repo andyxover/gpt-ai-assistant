@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useTransition, useRef } from 'react';
-import { enrollStudent, withdrawStudent } from './actions';
+import { enrollStudent, withdrawStudent, unlinkParentFromStudent } from './actions';
+import AddParentForm from './AddParentForm';
 
-interface RosterRow {
+export interface RosterRow {
   student_id: string;
   display_name: string;
   email: string | null;
@@ -12,12 +13,43 @@ interface RosterRow {
   avg_mastery: number | null;
 }
 
-export default function RosterClient(props: { classId: string; initialRows: RosterRow[] }) {
+export interface ParentLink {
+  parent_id: string;
+  display_name: string;
+  email: string | null;
+  relationship: string;
+}
+
+export default function RosterClient(props: {
+  classId: string;
+  initialRows: RosterRow[];
+  initialParentsByStudent: Record<string, ParentLink[]>;
+}) {
   const [rows, setRows] = useState<RosterRow[]>(props.initialRows);
+  const [parentsByStudent, setParentsByStudent] = useState<
+    Record<string, ParentLink[]>
+  >(props.initialParentsByStudent);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [addingParentFor, setAddingParentFor] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Re-fetch students AND parents from the API. Used after add/remove so
+  // the table reflects authoritative server state without a full route
+  // refresh.
+  async function refetch() {
+    const r = await fetch(`/api/teacher-roster/${props.classId}`, {
+      cache: 'no-store',
+    });
+    if (!r.ok) return;
+    const data: {
+      rows: RosterRow[];
+      parentsByStudent: Record<string, ParentLink[]>;
+    } = await r.json();
+    setRows(data.rows);
+    setParentsByStudent(data.parentsByStudent ?? {});
+  }
 
   function onAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,11 +66,7 @@ export default function RosterClient(props: { classId: string; initialRows: Rost
       }
       setMsg(res.created ? 'Student created and enrolled.' : 'Existing student enrolled.');
       formRef.current?.reset();
-      const r = await fetch(`/api/teacher-roster/${props.classId}`, { cache: 'no-store' });
-      if (r.ok) {
-        const data: { rows: RosterRow[] } = await r.json();
-        setRows(data.rows);
-      }
+      await refetch();
     });
   }
 
@@ -53,6 +81,35 @@ export default function RosterClient(props: { classId: string; initialRows: Rost
         return;
       }
       setRows(prev => prev.filter(r => r.student_id !== studentId));
+      // Drop their parents from local state too so the row's gone cleanly.
+      setParentsByStudent(prev => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
+    });
+  }
+
+  function onUnlinkParent(studentId: string, parent: ParentLink) {
+    if (!confirm(`Unlink ${parent.display_name} from this student?`)) return;
+    setErr(null);
+    setMsg(null);
+    // Optimistic: drop the chip first, reconcile from server after.
+    setParentsByStudent(prev => ({
+      ...prev,
+      [studentId]: (prev[studentId] ?? []).filter(p => p.parent_id !== parent.parent_id),
+    }));
+    startTransition(async () => {
+      const res = await unlinkParentFromStudent({
+        classId: props.classId,
+        studentId,
+        parentId: parent.parent_id,
+      });
+      if (!res.ok) {
+        setErr(res.error ?? 'Unlink failed');
+      }
+      // Always reconcile so we don't drift from server state.
+      await refetch();
     });
   }
 
@@ -91,30 +148,175 @@ export default function RosterClient(props: { classId: string; initialRows: Rost
               </tr>
             </thead>
             <tbody>
-              {rows.map(r => (
-                <tr key={r.student_id} style={{ borderTop: '1px solid var(--border-soft)' }}>
-                  <td style={tdStyle}><strong>{r.display_name}</strong></td>
-                  <td style={tdStyle} className="muted">{r.email ?? '—'}</td>
-                  <td style={tdStyle} className="mono">{r.total_attempts}</td>
-                  <td style={tdStyle} className="mono">
-                    {r.avg_mastery == null ? '—' : `${Math.round(r.avg_mastery)}/100`}
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>
-                    <button
-                      onClick={() => onWithdraw(r.student_id, r.display_name)}
-                      disabled={pending}
-                      className="btn danger-ghost"
-                    >
-                      Withdraw
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {rows.map(r => {
+                const parents = parentsByStudent[r.student_id] ?? [];
+                const isAdding = addingParentFor === r.student_id;
+                return (
+                  <RosterRowGroup
+                    key={r.student_id}
+                    row={r}
+                    parents={parents}
+                    pending={pending}
+                    isAddingParent={isAdding}
+                    onWithdraw={() => onWithdraw(r.student_id, r.display_name)}
+                    onUnlinkParent={p => onUnlinkParent(r.student_id, p)}
+                    onStartAddParent={() => setAddingParentFor(r.student_id)}
+                    onCancelAddParent={() => setAddingParentFor(null)}
+                    onParentLinked={() => {
+                      setAddingParentFor(null);
+                      void refetch();
+                    }}
+                    classId={props.classId}
+                  />
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
     </>
+  );
+}
+
+function RosterRowGroup({
+  row,
+  parents,
+  pending,
+  isAddingParent,
+  onWithdraw,
+  onUnlinkParent,
+  onStartAddParent,
+  onCancelAddParent,
+  onParentLinked,
+  classId,
+}: {
+  row: RosterRow;
+  parents: ParentLink[];
+  pending: boolean;
+  isAddingParent: boolean;
+  onWithdraw: () => void;
+  onUnlinkParent: (p: ParentLink) => void;
+  onStartAddParent: () => void;
+  onCancelAddParent: () => void;
+  onParentLinked: () => void;
+  classId: string;
+}) {
+  return (
+    <>
+      <tr style={{ borderTop: '1px solid var(--border-soft)' }}>
+        <td style={tdStyle}><strong>{row.display_name}</strong></td>
+        <td style={tdStyle} className="muted">{row.email ?? '—'}</td>
+        <td style={tdStyle} className="mono">{row.total_attempts}</td>
+        <td style={tdStyle} className="mono">
+          {row.avg_mastery == null ? '—' : `${Math.round(row.avg_mastery)}/100`}
+        </td>
+        <td style={{ ...tdStyle, textAlign: 'right' }}>
+          <button
+            onClick={onWithdraw}
+            disabled={pending}
+            className="btn danger-ghost"
+          >
+            Withdraw
+          </button>
+        </td>
+      </tr>
+      <tr style={{ background: 'rgba(0,0,0,0.015)' }}>
+        <td colSpan={5} style={{ padding: '6px 18px 14px' }}>
+          <div
+            className="row"
+            style={{
+              gap: 8,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              fontSize: 12,
+            }}
+          >
+            <span className="mono small dim">Parents:</span>
+            {parents.length === 0 && (
+              <span className="muted small" style={{ fontStyle: 'italic' }}>
+                none linked yet
+              </span>
+            )}
+            {parents.map(p => (
+              <ParentChip
+                key={p.parent_id}
+                parent={p}
+                disabled={pending}
+                onUnlink={() => onUnlinkParent(p)}
+              />
+            ))}
+            {!isAddingParent && (
+              <button
+                type="button"
+                onClick={onStartAddParent}
+                className="btn ghost small"
+                style={{ padding: '3px 10px', fontSize: 12 }}
+                disabled={pending}
+              >
+                + Add parent
+              </button>
+            )}
+          </div>
+          {isAddingParent && (
+            <AddParentForm
+              classId={classId}
+              studentId={row.student_id}
+              studentName={row.display_name}
+              onLinked={onParentLinked}
+              onCancel={onCancelAddParent}
+            />
+          )}
+        </td>
+      </tr>
+    </>
+  );
+}
+
+function ParentChip({
+  parent,
+  disabled,
+  onUnlink,
+}: {
+  parent: ParentLink;
+  disabled: boolean;
+  onUnlink: () => void;
+}) {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '3px 4px 3px 10px',
+        background: 'var(--surface-2)',
+        border: '1px solid var(--border-soft)',
+        borderRadius: 999,
+        fontSize: 12,
+      }}
+      title={parent.email ?? ''}
+    >
+      <span>{parent.display_name}</span>
+      <span className="mono small dim">·</span>
+      <span className="mono small dim">{parent.relationship}</span>
+      <button
+        type="button"
+        onClick={onUnlink}
+        disabled={disabled}
+        aria-label={`Unlink ${parent.display_name}`}
+        title={`Unlink ${parent.display_name}`}
+        style={{
+          border: 'none',
+          background: 'transparent',
+          cursor: 'pointer',
+          color: 'var(--text-dim)',
+          fontSize: 14,
+          lineHeight: 1,
+          padding: '0 4px',
+        }}
+      >
+        ×
+      </button>
+    </span>
   );
 }
 
