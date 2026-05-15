@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import GenerateButton from './GenerateButton';
 import UncertaintyForm from './UncertaintyForm';
+import ConceptEditor from './ConceptEditor';
 
 interface SyllabusRow {
   id: string;
@@ -100,7 +101,11 @@ export default async function SyllabusDetail({ params }: { params: Promise<{ id:
               <div key={c.id} className="scope-row">
                 <span className="wk">W{c.week_introduced}</span>
                 <span className="topic">
-                  <strong>{c.name}</strong>
+                  <ConceptEditor
+                    conceptId={c.id}
+                    syllabusId={syllabus.id}
+                    initialName={c.name}
+                  />
                   <span className="mono small dim" style={{ marginLeft: 10 }}>
                     {c.code} · {c.question_count} {c.question_count === 1 ? 'question' : 'questions'}
                   </span>

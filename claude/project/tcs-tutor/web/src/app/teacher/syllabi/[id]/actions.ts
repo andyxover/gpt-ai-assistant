@@ -20,6 +20,51 @@ export interface ClarifyResult {
   error?: string;
 }
 
+export interface RenameConceptResult {
+  ok: boolean;
+  newName?: string;
+  error?: string;
+}
+
+/**
+ * Rename a parsed concept. The concept's id (UUID) is what every
+ * downstream record (questions, mastery, attempts) is keyed on, so
+ * the name is purely cosmetic — renaming doesn't orphan any data.
+ */
+export async function renameConcept(opts: {
+  conceptId: string;
+  syllabusId: string;
+  newName: string;
+}): Promise<RenameConceptResult> {
+  const user = await getTutorUser();
+  if (!user || (user.role !== 'teacher' && user.role !== 'admin')) {
+    return { ok: false, error: 'Not authorized' };
+  }
+
+  const trimmed = opts.newName.trim();
+  if (!trimmed) return { ok: false, error: 'Name cannot be empty' };
+  if (trimmed.length > 120) return { ok: false, error: 'Name is too long (max 120 chars)' };
+
+  // Verify the teacher owns the class for this syllabus
+  const { rows: [row] } = await pool.query<{ teacher_user_id: string }>(
+    `SELECT cls.teacher_user_id
+       FROM concepts c
+       JOIN syllabi s ON s.id = c.syllabus_id
+       JOIN classes cls ON cls.id = s.class_id
+      WHERE c.id = $1 AND s.id = $2`,
+    [opts.conceptId, opts.syllabusId],
+  );
+  if (!row) return { ok: false, error: 'Concept not found' };
+  if (row.teacher_user_id !== user.id && user.role !== 'admin') {
+    return { ok: false, error: 'You do not own this class' };
+  }
+
+  await pool.query(`UPDATE concepts SET name = $1 WHERE id = $2`, [trimmed, opts.conceptId]);
+
+  revalidatePath(`/teacher/syllabi/${opts.syllabusId}`);
+  return { ok: true, newName: trimmed };
+}
+
 const COST_PER_M = { input: 3.0, output: 15.0 };
 
 export async function generateForConcept(opts: {

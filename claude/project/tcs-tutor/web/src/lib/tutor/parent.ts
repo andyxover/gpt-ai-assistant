@@ -169,6 +169,82 @@ export async function loadWeeklyDigest(studentId: string): Promise<WeeklyDigestD
   };
 }
 
+export interface ImprovedConceptTrail {
+  name: string;
+  /** Rolling 5-attempt accuracy (0-100), one point per attempt over
+   *  the last ~14 days. Smoother to read than raw right/wrong. */
+  points: number[];
+  /** Current mastery (0-100). */
+  scoreNow: number;
+  /** Delta vs. 7 days ago (positive = improved). */
+  delta: number;
+}
+
+/**
+ * Per-concept trend data for concepts the student is improving on.
+ * Used to render sparklines next to the AI improvement narrative.
+ */
+export async function loadImprovedConceptTrails(
+  studentId: string,
+  conceptNames: string[],
+): Promise<ImprovedConceptTrail[]> {
+  if (conceptNames.length === 0) return [];
+
+  // attempts only stores question_id, so reach concept_id through questions.
+  const { rows } = await pool.query<{
+    id: string;
+    name: string;
+    score_now: string;
+    marks: string;       // postgres int array serialized to comma-text
+  }>(
+    `SELECT c.id,
+            c.name,
+            COALESCE(m.score::text, '0') AS score_now,
+            (
+              SELECT array_to_string(array_agg(a.is_correct::int ORDER BY a.created_at), ',')
+                FROM attempts a
+                JOIN questions q ON q.id = a.question_id
+               WHERE a.student_id = $1
+                 AND q.concept_id = c.id
+                 AND a.created_at >= now() - interval '14 days'
+            ) AS marks
+       FROM concepts c
+       LEFT JOIN mastery m ON m.concept_id = c.id AND m.student_id = $1
+      WHERE c.name = ANY($2::text[])`,
+    [studentId, conceptNames],
+  );
+
+  const out: ImprovedConceptTrail[] = [];
+  for (const r of rows) {
+    const marks = (r.marks ?? '').split(',').filter(Boolean).map(Number);
+    if (marks.length < 2) continue;
+
+    // Rolling 5-attempt accuracy.
+    const win = 5;
+    const points: number[] = [];
+    for (let i = 0; i < marks.length; i++) {
+      const slice = marks.slice(Math.max(0, i - (win - 1)), i + 1);
+      const avg = slice.reduce((s, x) => s + x, 0) / slice.length;
+      points.push(Math.round(avg * 100));
+    }
+
+    const scoreNow = Math.round(Number(r.score_now));
+    // Approximate "delta vs. ~7d ago" as the gap between the rolling
+    // accuracy at the start of the window and now. Simple, signal-y.
+    const past = points[Math.max(0, Math.floor(points.length / 2) - 1)] ?? points[0];
+    const delta = scoreNow - past;
+
+    out.push({ name: r.name, points, scoreNow, delta });
+  }
+
+  // Same order as input
+  out.sort(
+    (a, b) =>
+      conceptNames.indexOf(a.name) - conceptNames.indexOf(b.name),
+  );
+  return out;
+}
+
 /**
  * Cache layer: a narrative depends only on the data we feed it. If the
  * data hash + language haven't changed since we last generated, return

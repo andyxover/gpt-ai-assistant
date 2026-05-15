@@ -1,4 +1,10 @@
-import { generateParentNarrative, type WeeklyDigestData, type Lang } from '@/lib/tutor/parent';
+import {
+  generateParentNarrative,
+  loadImprovedConceptTrails,
+  type WeeklyDigestData,
+  type Lang,
+} from '@/lib/tutor/parent';
+import Sparkline from '@/components/Sparkline';
 
 interface Strings {
   improvement: string;
@@ -32,6 +38,13 @@ export default async function NarrativeSection({
     return <div className="empty-illust">{L.noData}</div>;
   }
 
+  // Pull per-concept trails for the concepts the AI flagged as improving.
+  // Cheap query — handful of attempts arrays for a few concepts.
+  const trails = await loadImprovedConceptTrails(
+    data.child.id,
+    data.improvedConcepts.map(c => c.name),
+  );
+
   return (
     <>
       {narrative.improvement && (
@@ -39,6 +52,45 @@ export default async function NarrativeSection({
           <div className="section-h"><h2>{L.improvement}</h2></div>
           <div className="card" style={{ borderLeft: '3px solid var(--success)' }}>
             <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{narrative.improvement}</p>
+            {trails.length > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  marginTop: 14,
+                  paddingTop: 12,
+                  borderTop: '1px solid var(--surface-3)',
+                }}
+              >
+                {trails.map(t => (
+                  <div
+                    key={t.name}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      fontSize: 13,
+                    }}
+                  >
+                    <span style={{ flex: 1, color: 'var(--text)' }}>{t.name}</span>
+                    <Sparkline points={t.points} />
+                    <span
+                      className="mono small"
+                      style={{
+                        minWidth: 56,
+                        textAlign: 'right',
+                        color: t.delta >= 0 ? 'var(--success)' : 'var(--danger)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {t.delta >= 0 ? '+' : ''}
+                      {t.delta} · {t.scoreNow}/100
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
