@@ -3,6 +3,7 @@ import { pool } from '@/lib/tutor/db';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import GenerateButton from './GenerateButton';
+import UncertaintyForm from './UncertaintyForm';
 
 interface SyllabusRow {
   id: string;
@@ -79,9 +80,10 @@ export default async function SyllabusDetail({ params }: { params: Promise<{ id:
       {uncertainties.length > 0 && (
         <div className="attention-card">
           <div className="label">Things Claude wasn&apos;t sure about</div>
-          <ul style={{ margin: '8px 0 0', paddingLeft: 22, fontSize: 13.5, lineHeight: 1.6 }}>
-            {uncertainties.map((u, i) => <li key={i}>{u}</li>)}
-          </ul>
+          <div className="body" style={{ marginTop: 4 }}>
+            Answer any of the questions below to update the parsed scope. The system will re-parse with your clarifications.
+          </div>
+          <UncertaintyForm syllabusId={syllabus.id} uncertainties={uncertainties} />
         </div>
       )}
 

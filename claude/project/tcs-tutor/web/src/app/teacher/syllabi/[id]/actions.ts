@@ -3,12 +3,20 @@
 import { revalidatePath } from 'next/cache';
 import { pool } from '@/lib/tutor/db';
 import { generateQuestions, ConceptForGeneration } from '@/lib/tutor/generate-questions';
+import { parseSyllabus, ParsedScope } from '@/lib/tutor/parse-syllabus';
 import { getTutorUser } from '@/lib/tutor/role';
 
 export interface GenerateResult {
   ok: boolean;
   added?: number;
   costUSD?: number;
+  error?: string;
+}
+
+export interface ClarifyResult {
+  ok: boolean;
+  conceptCount?: number;
+  remainingUncertainties?: string[];
   error?: string;
 }
 
@@ -100,4 +108,161 @@ export async function generateForConcept(opts: {
 
   revalidatePath(`/teacher/syllabi/${opts.syllabusId}`);
   return { ok: true, added, costUSD };
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Clarify uncertainties → re-parse the syllabus with teacher's answers
+// ──────────────────────────────────────────────────────────────────────────
+
+export async function clarifySyllabus(opts: {
+  syllabusId: string;
+  /** Map of uncertainty index → teacher's answer (empty answers ignored) */
+  answers: Record<number, string>;
+}): Promise<ClarifyResult> {
+  const user = await getTutorUser();
+  if (!user || (user.role !== 'teacher' && user.role !== 'admin')) {
+    return { ok: false, error: 'Not authorized' };
+  }
+
+  // Load syllabus, verify ownership, pull current raw text + uncertainties
+  const { rows: [syl] } = await pool.query<{
+    id: string;
+    class_id: string;
+    raw_text: string;
+    parser_uncertainties: string[] | null;
+    teacher_user_id: string;
+  }>(
+    `SELECT s.id, s.class_id, s.raw_text, s.parser_uncertainties,
+            c.teacher_user_id
+       FROM syllabi s
+       JOIN classes c ON c.id = s.class_id
+      WHERE s.id = $1`,
+    [opts.syllabusId],
+  );
+  if (!syl) return { ok: false, error: 'Syllabus not found' };
+  if (syl.teacher_user_id !== user.id && user.role !== 'admin') {
+    return { ok: false, error: 'You do not own this class' };
+  }
+
+  const uncertainties = Array.isArray(syl.parser_uncertainties) ? syl.parser_uncertainties : [];
+  if (uncertainties.length === 0) {
+    return { ok: false, error: 'Nothing to clarify — no uncertainties on this syllabus.' };
+  }
+
+  // Build a "clarifications" block that pairs each flagged uncertainty with
+  // the teacher's answer, then ask Claude to re-parse with those in mind.
+  const qa = uncertainties
+    .map((q, i) => {
+      const a = (opts.answers[i] ?? '').trim();
+      return a ? { q, a } : null;
+    })
+    .filter((x): x is { q: string; a: string } => x !== null);
+
+  if (qa.length === 0) {
+    return { ok: false, error: 'Type at least one answer before saving.' };
+  }
+
+  const augmentedText =
+    syl.raw_text +
+    '\n\n---\n' +
+    'TEACHER CLARIFICATIONS — apply these to resolve previously-flagged uncertainties.\n' +
+    'Treat the teacher\'s answer as authoritative; update the structured scope so the uncertainty no longer applies.\n\n' +
+    qa.map(({ q, a }) => `Question: ${q}\nTeacher's answer: ${a}`).join('\n\n');
+
+  // Re-parse
+  let parsed: { scope: ParsedScope };
+  try {
+    parsed = await parseSyllabus(augmentedText);
+  } catch (err) {
+    return { ok: false, error: `Re-parse failed: ${err instanceof Error ? err.message : String(err)}` };
+  }
+
+  // Persist: update parsed_scope + parser_uncertainties on the same row,
+  // and merge new concepts (keep existing ones with matching codes so any
+  // questions already generated stay attached).
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `UPDATE syllabi
+          SET parsed_scope = $2::jsonb,
+              parser_uncertainties = $3::jsonb
+        WHERE id = $1`,
+      [
+        opts.syllabusId,
+        JSON.stringify(parsed.scope),
+        JSON.stringify(parsed.scope._uncertainties ?? []),
+      ],
+    );
+
+    const concepts = flattenConcepts(parsed.scope);
+    for (const c of concepts) {
+      await client.query(
+        `INSERT INTO concepts
+           (syllabus_id, code, name, chapter_title, week_introduced, week_last_taught, sequence_order, is_safety_critical)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (syllabus_id, code) DO UPDATE
+           SET name = EXCLUDED.name,
+               chapter_title = EXCLUDED.chapter_title,
+               week_introduced = EXCLUDED.week_introduced,
+               week_last_taught = EXCLUDED.week_last_taught,
+               sequence_order = EXCLUDED.sequence_order,
+               is_safety_critical = EXCLUDED.is_safety_critical`,
+        [opts.syllabusId, c.code, c.name, c.chapterTitle, c.weekIntroduced, c.weekLastTaught, c.sequenceOrder, c.isSafetyCritical],
+      );
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    return { ok: false, error: `Save failed: ${err instanceof Error ? err.message : String(err)}` };
+  } finally {
+    client.release();
+  }
+
+  revalidatePath(`/teacher/syllabi/${opts.syllabusId}`);
+  revalidatePath(`/teacher/classes/${syl.class_id}/progress`);
+  return {
+    ok: true,
+    conceptCount: countConcepts(parsed.scope),
+    remainingUncertainties: parsed.scope._uncertainties ?? [],
+  };
+}
+
+function flattenConcepts(scope: ParsedScope) {
+  const out: {
+    code: string; name: string; chapterTitle: string;
+    weekIntroduced: number; weekLastTaught: number;
+    sequenceOrder: number; isSafetyCritical: boolean;
+  }[] = [];
+  let order = 0;
+  for (const ch of scope.chapters ?? []) {
+    for (const w of ch.weeks ?? []) {
+      const weekNum = parseWeek(w.wk);
+      for (const c of w.concepts ?? []) {
+        order += 1;
+        out.push({
+          code: c.code,
+          name: c.name,
+          chapterTitle: ch.title,
+          weekIntroduced: weekNum,
+          weekLastTaught: weekNum,
+          sequenceOrder: order,
+          isSafetyCritical: Boolean(c.is_safety_critical),
+        });
+      }
+    }
+  }
+  return out;
+}
+
+function countConcepts(scope: ParsedScope): number {
+  return (scope.chapters ?? []).reduce(
+    (s, ch) => s + (ch.weeks ?? []).reduce((ws, w) => ws + (w.concepts ?? []).length, 0),
+    0,
+  );
+}
+
+function parseWeek(wk: string): number {
+  const m = String(wk).match(/(\d+)/);
+  return m ? Number(m[1]) : 1;
 }
