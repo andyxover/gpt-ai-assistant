@@ -25,7 +25,13 @@ export default function GenerateButton(props: {
         setErr(res.error ?? 'Generation failed.');
         return;
       }
-      setMsg(`+${res.added} ${res.added === 1 ? 'question' : 'questions'} (≈$${(res.costUSD ?? 0).toFixed(3)})`);
+      const added = res.added ?? 0;
+      const flagged = res.flagged ?? 0;
+      const cost = (res.costUSD ?? 0).toFixed(3);
+      const parts = [];
+      if (added > 0) parts.push(`+${added} approved`);
+      if (flagged > 0) parts.push(`${flagged} need review`);
+      setMsg(`${parts.join(' · ')} (≈$${cost})`);
     });
   }
 

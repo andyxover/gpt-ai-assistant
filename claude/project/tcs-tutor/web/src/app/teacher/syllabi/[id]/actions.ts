@@ -3,12 +3,16 @@
 import { revalidatePath } from 'next/cache';
 import { pool } from '@/lib/tutor/db';
 import { generateQuestions, ConceptForGeneration } from '@/lib/tutor/generate-questions';
+import { validateGeneratedBatch } from '@/lib/tutor/validate-questions';
 import { parseSyllabus, ParsedScope } from '@/lib/tutor/parse-syllabus';
 import { getTutorUser } from '@/lib/tutor/role';
 
 export interface GenerateResult {
   ok: boolean;
+  /** Questions that passed multi-pass validation (`approved`). */
   added?: number;
+  /** Questions stored as `needs_review` (teacher must approve). */
+  flagged?: number;
   costUSD?: number;
   error?: string;
 }
@@ -122,17 +126,53 @@ export async function generateForConcept(opts: {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 
-  // Persist — schema-validated questions go in as 'approved' for Phase 2.
-  // The full multi-pass validator (cross-model + fact-anchor) can be layered
-  // in later; for now schema validation alone is the bar.
+  // Multi-pass validation: a second AI call grades each question on
+  // correctness, distractor quality, clarity, and on-concept fit. Score
+  // >= 0.7 lands as 'approved'; below threshold is 'needs_review' so
+  // the teacher can inspect before it reaches students.
+  let validation;
+  try {
+    validation = await validateGeneratedBatch(gen.questions, {
+      id: concept.id,
+      name: concept.name,
+      description: concept.description,
+      chapter_title: concept.chapter_title,
+      grade: concept.grade ?? 7,
+      is_safety_critical: false,
+    });
+  } catch (err) {
+    // If the validator itself fails, fall back to schema-only — store
+    // everything as needs_review so a human checks before students see it.
+    const msg = err instanceof Error ? err.message : String(err);
+    validation = {
+      validations: gen.questions.map(() => ({
+        score: 0,
+        status: 'needs_review' as const,
+        notes: `Validator pass failed: ${msg}`,
+        flags: ['validator_failed'],
+      })),
+      usage: { input_tokens: 0, output_tokens: 0 },
+      model: '',
+    };
+  }
+
   let added = 0;
-  for (const q of gen.questions) {
+  let flagged = 0;
+  for (let i = 0; i < gen.questions.length; i++) {
+    const q = gen.questions[i];
+    const v = validation.validations[i];
+    const approved = v.status === 'approved';
+    if (approved) added += 1; else flagged += 1;
+
     await pool.query(
       `INSERT INTO questions
         (concept_id, body, options, correct_letter, explanation, difficulty,
          source, generator_model, generator_prompt_hash,
-         validation_status, validation_score, approved_at, approved_by)
-       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9, 'approved', 1.0, now(), 'pipeline')`,
+         validation_status, validation_score, validation_metadata,
+         approved_at, approved_by)
+       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9,
+               $10, $11, $12::jsonb,
+               ${approved ? 'now()' : 'NULL'}, $13)`,
       [
         opts.conceptId,
         q.body,
@@ -143,16 +183,22 @@ export async function generateForConcept(opts: {
         q.source,
         q.generator_model,
         q.generator_prompt_hash,
+        approved ? 'approved' : 'needs_review',
+        v.score,
+        JSON.stringify({ notes: v.notes, flags: v.flags, validator_model: validation.model }),
+        approved ? 'pipeline' : 'pending',
       ],
     );
-    added += 1;
   }
 
-  const costUSD =
+  const genCost =
     (gen.usage.input_tokens * COST_PER_M.input + gen.usage.output_tokens * COST_PER_M.output) / 1_000_000;
+  const valCost =
+    (validation.usage.input_tokens * COST_PER_M.input + validation.usage.output_tokens * COST_PER_M.output) / 1_000_000;
+  const costUSD = genCost + valCost;
 
   revalidatePath(`/teacher/syllabi/${opts.syllabusId}`);
-  return { ok: true, added, costUSD };
+  return { ok: true, added, flagged, costUSD };
 }
 
 // ──────────────────────────────────────────────────────────────────────────
