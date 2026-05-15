@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getTutorUser, activeDevUserId } from '@/lib/tutor/role';
 import RoleToggle from './RoleToggle';
+import UserMenu from './UserMenu';
 
 const ROLE_HOME: Record<string, string> = {
   teacher: '/teacher',
@@ -31,12 +32,11 @@ export default async function TopBar() {
       <div className="row" style={{ gap: 16 }}>
         {isDev && <RoleToggle current={toggleRole} />}
         {user && (
-          <div className="row" style={{ gap: 8 }}>
-            <span className="mono small dim">{user.role}</span>
-            <div className="avatar" title={user.display_name}>
-              {(user.display_name?.[0] ?? '?').toUpperCase()}
-            </div>
-          </div>
+          <UserMenu
+            displayName={user.display_name}
+            email={user.email}
+            role={user.role}
+          />
         )}
       </div>
     </div>
