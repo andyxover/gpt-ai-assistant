@@ -445,6 +445,11 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--p
   0%, 100% { opacity: 0.55; }
   50%      { opacity: 1; }
 }
+/* Parent weekly digest narrative skeleton shimmer. */
+@keyframes parentSkShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 .mastery-label {
   display: flex; justify-content: space-between; align-items: baseline;
   font-size: 13px; margin-bottom: 5px;

@@ -5,10 +5,22 @@ import { revalidatePath } from 'next/cache';
 import { pool } from '@/lib/tutor/db';
 import { getTutorUser } from '@/lib/tutor/role';
 
-export async function createClass(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+/**
+ * Form state shape for `useActionState` on the New Class form.
+ * `error` is populated on validation/auth failures; success path
+ * never returns (the server action redirects to the new class).
+ */
+export interface NewClassState {
+  error?: string;
+}
+
+export async function createClass(
+  _prevState: NewClassState,
+  formData: FormData,
+): Promise<NewClassState> {
   const user = await getTutorUser();
   if (!user || (user.role !== 'teacher' && user.role !== 'admin')) {
-    return { ok: false, error: 'Not authorized' };
+    return { error: 'Not authorized' };
   }
 
   const subject = String(formData.get('subject') ?? '').trim();
@@ -17,18 +29,18 @@ export async function createClass(formData: FormData): Promise<{ ok: boolean; er
   const displayName = String(formData.get('display_name') ?? '').trim();
   const academicYear = String(formData.get('academic_year') ?? '').trim();
 
-  if (!subject) return { ok: false, error: 'Subject is required' };
-  if (!Number.isFinite(grade) || grade < 1 || grade > 12) return { ok: false, error: 'Grade must be 1-12' };
-  if (!section) return { ok: false, error: 'Section is required' };
-  if (!displayName) return { ok: false, error: 'Display name is required' };
-  if (!academicYear) return { ok: false, error: 'Academic year is required' };
+  if (!subject) return { error: 'Subject is required' };
+  if (!Number.isFinite(grade) || grade < 1 || grade > 12) return { error: 'Grade must be 1-12' };
+  if (!section) return { error: 'Section is required' };
+  if (!displayName) return { error: 'Display name is required' };
+  if (!academicYear) return { error: 'Academic year is required' };
 
   // Use the school the teacher belongs to (first one if multiple, single-tenant for now)
   const { rows: [schoolRow] } = await pool.query<{ school_id: string }>(
     `SELECT school_id FROM users WHERE id = $1`,
     [user.id],
   );
-  if (!schoolRow?.school_id) return { ok: false, error: 'No school assigned to your account' };
+  if (!schoolRow?.school_id) return { error: 'No school assigned to your account' };
 
   const { rows: [created] } = await pool.query<{ id: string }>(
     `INSERT INTO classes

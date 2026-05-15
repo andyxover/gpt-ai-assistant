@@ -1,6 +1,9 @@
 import { getTutorUser } from '@/lib/tutor/role';
-import { listChildren, loadWeeklyDigest, generateParentNarrative, type Lang } from '@/lib/tutor/parent';
+import { listChildren, loadWeeklyDigest, type Lang } from '@/lib/tutor/parent';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
+import NarrativeSection from './NarrativeSection';
+import NarrativeSkeleton from './NarrativeSkeleton';
 
 const STRINGS = {
   en: {
@@ -55,7 +58,6 @@ export default async function ThisWeekPage({ searchParams }: { searchParams: Pro
   const data = await loadWeeklyDigest(activeChildId);
   if (!data) return <p className="muted">{L.noChildren}</p>;
 
-  const narrative = await generateParentNarrative(data, lang);
   const weakest = data.strugglingConcepts[0];
 
   return (
@@ -89,75 +91,15 @@ export default async function ThisWeekPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      {narrative ? (
-        <>
-          {narrative.improvement && (
-            <>
-              <div className="section-h"><h2>{L.improvement}</h2></div>
-              <div className="card" style={{ borderLeft: '3px solid var(--success)' }}>
-                <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{narrative.improvement}</p>
-              </div>
-            </>
-          )}
-
-          {narrative.attention && (
-            <>
-              <div className="section-h"><h2>{L.attention}</h2></div>
-              <div className="attention-card">
-                <div className="label">Focus area</div>
-                {weakest && (
-                  <div className="head">
-                    <div className="concept">{weakest.name}</div>
-                    <div className="meta">{weakest.score}/100 · {weakest.attempts} attempts</div>
-                  </div>
-                )}
-                <div className="body">{narrative.attention}</div>
-              </div>
-            </>
-          )}
-
-          {narrative.prediction && (
-            <>
-              <div className="section-h"><h2>{L.prediction}</h2></div>
-              <div className="prediction-card">
-                <p style={{ margin: '0 0 10px', fontSize: 14 }}>{narrative.prediction}</p>
-                {data.nextExam && (
-                  <div className="prediction-band">
-                    <div className="marker" style={{ left: `${Math.max(2, Math.min(98, data.accuracyPercent))}%` }} />
-                    <span className="tick" style={{ left: '20%' }}>at risk</span>
-                    <span className="tick" style={{ left: '50%' }}>borderline</span>
-                    <span className="tick" style={{ left: '80%' }}>on track</span>
-                  </div>
-                )}
-                {data.nextExam && (
-                  <p className="mono small muted" style={{ marginTop: 24 }}>
-                    {data.nextExam.name} · {data.nextExam.weeksAway} {data.nextExam.weeksAway === 1 ? L.weekAway : L.weeksAway}
-                    {data.nextExam.scope ? ` · ${data.nextExam.scope}` : ''}
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-
-          {narrative.actions && narrative.actions.length > 0 && (
-            <>
-              <div className="section-h"><h2>{L.actions}</h2></div>
-              <div className="action-list">
-                {narrative.actions.map((a, i) => (
-                  <div key={i} className="action-item">
-                    <div className="action-num">{i + 1}</div>
-                    <div className="action-body">
-                      <div className="title">{a}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      ) : (
-        <div className="empty-illust">{L.noData}</div>
-      )}
+      {/*
+        The narrative is the only slow piece on this page (8-12s on a
+        cache miss for the AI call). Wrapping it in <Suspense> lets the
+        header + KPIs paint instantly while the narrative streams in.
+        Far better UX than blocking the whole route behind it.
+      */}
+      <Suspense fallback={<NarrativeSkeleton />}>
+        <NarrativeSection data={data} lang={lang} L={L} />
+      </Suspense>
 
       <div className="parent-footer">
         <span className="item">{L.safetyNote}</span>
