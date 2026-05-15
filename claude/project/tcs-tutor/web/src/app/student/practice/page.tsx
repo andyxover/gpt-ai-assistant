@@ -4,7 +4,8 @@ import { pool } from '@/lib/tutor/db';
 import { redirect } from 'next/navigation';
 import { startSession } from './actions';
 import PracticeClient from './PracticeClient';
-import MasteryPanel from '@/components/MasteryPanel';
+import { loadMasteryRows } from '@/components/MasteryPanel';
+import type { MasteryRow } from '@/components/MasteryPanelView';
 
 type Mode = 'review' | 'preview' | 'exam_prep';
 
@@ -35,22 +36,27 @@ export default async function PracticePage({
 
   const session = await startSession(mode);
 
-  // Look up syllabus + current week so the mastery panel knows what to render.
-  let syllabusId: string | null = null;
-  let currentWeek = 1;
+  // Look up syllabus + current week so we can pre-fetch mastery rows
+  // server-side and hand them straight to the client (no second round-trip
+  // on hydrate, no router.refresh() needed after each answer).
+  let initialMastery: MasteryRow[] = [];
+  let hasSyllabus = false;
   if (session.ok) {
     const syl = await findActiveSyllabusForStudent(user.id);
     if (syl) {
-      syllabusId = syl.id;
+      hasSyllabus = true;
       const { rows } = await pool.query<{ current_week: number }>(
         `SELECT current_week FROM syllabi WHERE id = $1`,
         [syl.id],
       );
-      currentWeek = Number(rows[0]?.current_week ?? 1);
+      const currentWeek = Number(rows[0]?.current_week ?? 1);
+      initialMastery = await loadMasteryRows({
+        studentId: user.id,
+        syllabusId: syl.id,
+        currentWeek,
+      });
     }
   }
-
-  const focusConceptId = session.ok ? (session.question?.concept_id ?? null) : null;
 
   return (
     <>
@@ -65,23 +71,13 @@ export default async function PracticePage({
           <a href="/student" className="btn secondary small" style={{ marginTop: 12 }}>← Back</a>
         </div>
       ) : (
-        <div className="with-mastery">
-          {syllabusId && (
-            <MasteryPanel
-              studentId={user.id}
-              syllabusId={syllabusId}
-              currentWeek={currentWeek}
-              focusConceptId={focusConceptId}
-            />
-          )}
-          <div>
-            <PracticeClient
-              initialQuestion={session.question ?? null}
-              sessionId={session.sessionId ?? ''}
-              initialError={session.error}
-            />
-          </div>
-        </div>
+        <PracticeClient
+          initialQuestion={session.question ?? null}
+          sessionId={session.sessionId ?? ''}
+          initialError={session.error}
+          initialMastery={initialMastery}
+          hasSyllabus={hasSyllabus}
+        />
       )}
     </>
   );

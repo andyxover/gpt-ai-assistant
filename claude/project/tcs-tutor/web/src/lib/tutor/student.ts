@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { pool } from './db';
 
 export interface EnrolledClass {
@@ -8,7 +9,7 @@ export interface EnrolledClass {
   teacher_display: string | null;
 }
 
-export async function listEnrolledClasses(studentId: string): Promise<EnrolledClass[]> {
+export const listEnrolledClasses = cache(async (studentId: string): Promise<EnrolledClass[]> => {
   const { rows } = await pool.query<EnrolledClass>(
     `SELECT c.id, c.display_name, c.subject, c.section,
             (SELECT u.display_name FROM users u WHERE u.id = c.teacher_user_id) AS teacher_display
@@ -21,4 +22,4 @@ export async function listEnrolledClasses(studentId: string): Promise<EnrolledCl
     [studentId],
   );
   return rows;
-}
+});

@@ -1,26 +1,58 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { submitAnswer, requestNext } from './actions';
 import type { QuestionForStudent, AttemptResult } from '@/lib/tutor/mastery';
+import MasteryPanelView, { type MasteryRow } from '@/components/MasteryPanelView';
 
 export default function PracticeClient(props: {
   initialQuestion: QuestionForStudent | null;
   sessionId: string;
   initialError?: string;
+  initialMastery: MasteryRow[];
+  hasSyllabus: boolean;
 }) {
-  const router = useRouter();
   const [question, setQuestion] = useState<QuestionForStudent | null>(props.initialQuestion);
   const [feedback, setFeedback] = useState<AttemptResult | null>(null);
   const [pickedLetter, setPickedLetter] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(props.initialError ?? null);
+  const [mastery, setMastery] = useState<MasteryRow[]>(props.initialMastery);
+
+  // Optimistic local bump using the attempt result, so the bar visibly
+  // moves the instant the student answers — even before /api/student/mastery
+  // returns. The fetch below then reconciles with the server.
+  function applyOptimistic(attempt: AttemptResult, conceptId: string | undefined) {
+    if (!conceptId) return;
+    setMastery(prev =>
+      prev.map(row =>
+        row.concept_id === conceptId
+          ? {
+              ...row,
+              score: Math.max(0, Math.min(100, attempt.masteryAfter)),
+              attempts: row.attempts + 1,
+            }
+          : row,
+      ),
+    );
+  }
+
+  async function refetchMastery() {
+    try {
+      const r = await fetch('/api/student/mastery', { cache: 'no-store' });
+      if (!r.ok) return;
+      const data = (await r.json()) as { rows?: MasteryRow[] };
+      if (Array.isArray(data.rows)) setMastery(data.rows);
+    } catch {
+      // swallow — we already showed the optimistic update
+    }
+  }
 
   function handleAnswer(letter: string) {
     if (!question) return;
     setErrorMsg(null);
     setPickedLetter(letter);
+    const conceptId = question.concept_id;
     startTransition(async () => {
       const res = await submitAnswer({
         questionId: question.id,
@@ -32,9 +64,10 @@ export default function PracticeClient(props: {
         return;
       }
       setFeedback(res.attempt ?? null);
-      // Re-fetch server data (so the MasteryPanel reflects the new score)
-      // without resetting local question/feedback state.
-      router.refresh();
+      if (res.attempt) applyOptimistic(res.attempt, conceptId);
+      // Reconcile from the server (cheaper than router.refresh — only
+      // re-fetches the mastery rows, no full route render).
+      void refetchMastery();
     });
   }
 
@@ -54,20 +87,17 @@ export default function PracticeClient(props: {
         return;
       }
       setQuestion(res.question);
-      router.refresh();
     });
   }
 
-  if (!question) {
-    return (
-      <div className="card">
-        <div className="card-title">{errorMsg ?? 'No question available'}</div>
-        <a href="/student" className="btn ghost small">← Back to This week</a>
-      </div>
-    );
-  }
+  const focusConceptId = question?.concept_id ?? null;
 
-  return (
+  const quizMarkup = !question ? (
+    <div className="card">
+      <div className="card-title">{errorMsg ?? 'No question available'}</div>
+      <a href="/student" className="btn ghost small">← Back to This week</a>
+    </div>
+  ) : (
     <>
       <div className="card">
         <div className="row" style={{ marginBottom: 8 }}>
@@ -134,5 +164,15 @@ export default function PracticeClient(props: {
         <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 12 }}>{errorMsg}</p>
       )}
     </>
+  );
+
+  // If no syllabus is enrolled, skip the mastery panel entirely.
+  if (!props.hasSyllabus) return quizMarkup;
+
+  return (
+    <div className="with-mastery">
+      <MasteryPanelView concepts={mastery} focusConceptId={focusConceptId} />
+      <div>{quizMarkup}</div>
+    </div>
   );
 }

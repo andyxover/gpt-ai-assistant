@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { sendChat } from './actions';
 import type { ChatMessage } from '@/lib/tutor/chat';
 
 // Override default react-markdown components so paragraphs / lists
@@ -41,46 +40,90 @@ export default function ChatClient(props: {
   studentInitial: string;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>(props.initialMessages);
-  const [pending, startTransition] = useTransition();
+  const [streamingText, setStreamingText] = useState<string>(''); // live AI reply being written
+  const [pending, setPending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, pending]);
+  }, [messages, pending, streamingText]);
 
-  function submit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (pending) return;
     const formEl = e.currentTarget;
     const formData = new FormData(formEl);
     const text = String(formData.get('text') ?? '').trim();
-    if (!text || pending) return;
+    if (!text) return;
 
-    const optimistic: ChatMessage = {
+    const optimisticUser: ChatMessage = {
       id: `tmp-${Date.now()}`,
       role: 'student',
       content: text,
       created_at: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, optimistic]);
+    setMessages(prev => [...prev, optimisticUser]);
     if (inputRef.current) inputRef.current.value = '';
     setErr(null);
+    setStreamingText('');
+    setPending(true);
 
-    startTransition(async () => {
-      const form = new FormData();
-      form.set('text', text);
-      const res = await sendChat(form);
-      if (!res.ok) {
-        setErr(res.error ?? 'Send failed.');
-        return;
+    try {
+      const res = await fetch('/api/student-chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok || !res.body) {
+        const body = await res.text().catch(() => '');
+        throw new Error(body || `${res.status} ${res.statusText}`);
       }
-      const apiRes = await fetch('/api/student-chat/messages', { cache: 'no-store' });
-      if (apiRes.ok) {
-        const data: { messages: ChatMessage[] } = await apiRes.json();
-        setMessages(data.messages);
+
+      // Consume SSE: each event is "data: {json}\n\n"
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      let collected = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const frames = buf.split('\n\n');
+        buf = frames.pop() ?? '';
+        for (const frame of frames) {
+          const line = frame.trim();
+          if (!line.startsWith('data:')) continue;
+          const payload = JSON.parse(line.slice(5).trim()) as { delta?: string; done?: boolean; error?: string };
+          if (payload.error) {
+            throw new Error(payload.error);
+          }
+          if (payload.delta) {
+            collected += payload.delta;
+            setStreamingText(collected);
+          }
+          if (payload.done) break;
+        }
       }
-    });
+
+      // Append the final AI message to the list, clear streaming buffer
+      if (collected) {
+        const finalAi: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          role: 'ai',
+          content: collected,
+          created_at: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, finalAi]);
+      }
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : String(error));
+    } finally {
+      setStreamingText('');
+      setPending(false);
+    }
   }
 
   return (
@@ -122,8 +165,29 @@ export default function ChatClient(props: {
         {pending && (
           <div className="msg ai">
             <div className="ava">AI</div>
-            <div className="bubble">
-              <span className="typing"><span></span><span></span><span></span></span>
+            <div className="bubble" style={{ whiteSpace: 'normal' }}>
+              {streamingText ? (
+                <>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
+                    {streamingText}
+                  </ReactMarkdown>
+                  <span
+                    aria-hidden
+                    style={{
+                      display: 'inline-block',
+                      width: 8,
+                      height: 14,
+                      marginLeft: 2,
+                      verticalAlign: 'text-bottom',
+                      background: 'var(--text)',
+                      opacity: 0.55,
+                      animation: 'skShimmer 0.8s ease-in-out infinite',
+                    }}
+                  />
+                </>
+              ) : (
+                <span className="typing"><span></span><span></span><span></span></span>
+              )}
             </div>
           </div>
         )}

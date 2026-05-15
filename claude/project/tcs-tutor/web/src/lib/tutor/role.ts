@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { pool } from './db';
@@ -29,8 +30,11 @@ export const DEV_ROLE_COOKIE = 'tutor_dev_role';
  * Resolve which dev-bypass user (if any) is active for the current
  * request. Priority: cookie > env var > none. Returns null when
  * dev mode is off entirely.
+ *
+ * Wrapped in React.cache so duplicate calls within the same request
+ * (TopBar + layout + page + sidebar) collapse to one cookie read.
  */
-export async function activeDevUserId(): Promise<string | null> {
+export const activeDevUserId = cache(async (): Promise<string | null> => {
   const c = await cookies();
   const cookieRole = c.get(DEV_ROLE_COOKIE)?.value as 'teacher' | 'student' | 'parent' | undefined;
   if (cookieRole && DEV_USER_BY_ROLE[cookieRole]) {
@@ -38,7 +42,7 @@ export async function activeDevUserId(): Promise<string | null> {
   }
   const envId = process.env.TUTOR_DEV_USER_ID?.trim();
   return envId ? envId : null;
-}
+});
 
 /**
  * Look up the public.users row for the current request.
@@ -47,8 +51,12 @@ export async function activeDevUserId(): Promise<string | null> {
  *  1. `tutor_dev_role` cookie (set by the RoleToggle in the topbar)
  *  2. `TUTOR_DEV_USER_ID` env var (set in .env.local)
  *  3. Supabase Auth + email match against public.users
+ *
+ * React.cache memoizes per-request, so the four+ server components
+ * that all call this (TopBar, role layout, page itself, MasteryPanel)
+ * share one DB lookup instead of four.
  */
-export async function getTutorUser(): Promise<TutorUser | null> {
+export const getTutorUser = cache(async (): Promise<TutorUser | null> => {
   const devId = await activeDevUserId();
   if (devId) return loadById(devId);
 
@@ -56,7 +64,7 @@ export async function getTutorUser(): Promise<TutorUser | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user?.email) return null;
   return loadByEmail(user.email);
-}
+});
 
 async function loadById(id: string): Promise<TutorUser | null> {
   const { rows } = await pool.query<TutorUser>(

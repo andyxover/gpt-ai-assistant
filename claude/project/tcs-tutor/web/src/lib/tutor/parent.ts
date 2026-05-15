@@ -1,3 +1,5 @@
+import { cache } from 'react';
+import { createHash } from 'node:crypto';
 import { pool } from './db';
 import { askJSON } from './anthropic';
 
@@ -27,7 +29,7 @@ export interface ParentNarrative {
   actions: string[];
 }
 
-export async function listChildren(parentId: string): Promise<ChildSummary[]> {
+export const listChildren = cache(async (parentId: string): Promise<ChildSummary[]> => {
   const { rows } = await pool.query<ChildSummary>(
     `SELECT u.id, u.display_name,
             (SELECT c.display_name FROM enrollments e
@@ -45,7 +47,7 @@ export async function listChildren(parentId: string): Promise<ChildSummary[]> {
     [parentId],
   );
   return rows;
-}
+});
 
 export async function loadWeeklyDigest(studentId: string): Promise<WeeklyDigestData | null> {
   const { rows: [childRow] } = await pool.query<{ id: string; display_name: string; class_name: string; section: string }>(
@@ -167,11 +169,105 @@ export async function loadWeeklyDigest(studentId: string): Promise<WeeklyDigestD
   };
 }
 
+/**
+ * Cache layer: a narrative depends only on the data we feed it. If the
+ * data hash + language haven't changed since we last generated, return
+ * the cached narrative from parent_reports.snapshot. ~12s → ~50ms hit.
+ */
+function digestDataHash(data: WeeklyDigestData): string {
+  const seed = {
+    a: data.totalAttempts,
+    c: data.accuracyPercent,
+    i: data.improvedConcepts.map(c => [c.name, c.score]),
+    s: data.strugglingConcepts.map(c => [c.name, c.score]),
+    n: data.nextExam ? [data.nextExam.name, data.nextExam.weeksAway, data.nextExam.scope] : null,
+  };
+  return createHash('sha1').update(JSON.stringify(seed)).digest('hex').slice(0, 16);
+}
+
+interface NarrativeSnapshot {
+  data_hash: string;
+  narratives: Partial<Record<Lang, ParentNarrative>>;
+}
+
+async function readNarrativeCache(
+  studentId: string,
+  classId: string,
+  weekNumber: number,
+  dataHash: string,
+  lang: Lang,
+): Promise<ParentNarrative | null> {
+  const { rows } = await pool.query<{ snapshot: NarrativeSnapshot }>(
+    `SELECT snapshot FROM parent_reports
+       WHERE student_id = $1 AND class_id = $2 AND week_number = $3
+       LIMIT 1`,
+    [studentId, classId, weekNumber],
+  );
+  const snap = rows[0]?.snapshot;
+  if (!snap || snap.data_hash !== dataHash) return null;
+  return snap.narratives?.[lang] ?? null;
+}
+
+async function writeNarrativeCache(
+  studentId: string,
+  classId: string,
+  weekNumber: number,
+  dataHash: string,
+  lang: Lang,
+  narrative: ParentNarrative,
+): Promise<void> {
+  // Upsert. If hash matches an existing row, merge the new language into
+  // narratives. If hash differs (data changed), overwrite the snapshot.
+  await pool.query(
+    `INSERT INTO parent_reports
+       (student_id, class_id, week_number, week_starts, snapshot)
+     VALUES ($1, $2, $3, date_trunc('week', now())::date,
+             jsonb_build_object(
+               'data_hash', $4::text,
+               'narratives', jsonb_build_object($5::text, $6::jsonb)
+             ))
+     ON CONFLICT (student_id, week_number, class_id) DO UPDATE
+       SET snapshot = CASE
+             WHEN (parent_reports.snapshot->>'data_hash') = $4
+               THEN jsonb_set(parent_reports.snapshot, ARRAY['narratives', $5::text], $6::jsonb, true)
+             ELSE jsonb_build_object(
+                    'data_hash', $4::text,
+                    'narratives', jsonb_build_object($5::text, $6::jsonb)
+                  )
+           END`,
+    [studentId, classId, weekNumber, dataHash, lang, JSON.stringify(narrative)],
+  );
+}
+
+async function lookupStudentClassWeek(
+  studentId: string,
+): Promise<{ classId: string; weekNumber: number } | null> {
+  const { rows } = await pool.query<{ class_id: string; current_week: number }>(
+    `SELECT e.class_id, s.current_week
+       FROM enrollments e
+       JOIN syllabi s ON s.class_id = e.class_id AND s.superseded_at IS NULL
+      WHERE e.student_id = $1 AND e.withdrawn_at IS NULL
+      ORDER BY s.created_at DESC
+      LIMIT 1`,
+    [studentId],
+  );
+  if (!rows[0]) return null;
+  return { classId: rows[0].class_id, weekNumber: Number(rows[0].current_week) || 1 };
+}
+
 export async function generateParentNarrative(
   data: WeeklyDigestData,
   lang: Lang,
 ): Promise<ParentNarrative | null> {
   if (data.totalAttempts < 3) return null;
+
+  // Cache check
+  const ctx = await lookupStudentClassWeek(data.child.id);
+  const hash = digestDataHash(data);
+  if (ctx) {
+    const cached = await readNarrativeCache(data.child.id, ctx.classId, ctx.weekNumber, hash, lang);
+    if (cached) return cached;
+  }
 
   const langInstruction = lang === 'zh'
     ? 'Write the narrative in Traditional Chinese (繁體中文). Use natural, conversational Taiwanese-style phrasing — like a teacher chatting with a parent.'
@@ -203,6 +299,14 @@ Sections:
 - actions: 2-3 specific things the parent can do this week (questions to ask, study habits, conversation prompts). Each as a string in the array.`,
       maxTokens: 1000,
     });
+
+    // Persist to the cache for next visit (fire-and-forget — we don't
+    // want a write failure to bubble up to the request).
+    if (ctx && result.data) {
+      writeNarrativeCache(data.child.id, ctx.classId, ctx.weekNumber, hash, lang, result.data)
+        .catch(err => console.error('[parent] narrative cache write failed:', err));
+    }
+
     return result.data;
   } catch {
     return null;

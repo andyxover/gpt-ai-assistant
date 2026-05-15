@@ -1,23 +1,19 @@
 import { pool } from '@/lib/tutor/db';
-
-interface ConceptMastery {
-  concept_id: string;
-  name: string;
-  week_introduced: number;
-  score: number;       // 0..100
-  attempts: number;
-}
+import MasteryPanelView, { type MasteryRow } from './MasteryPanelView';
 
 /**
  * Load mastery rows for the concepts in scope (current week + a small
  * look-ahead) for one student. Returns concepts with no attempts as
  * score=0 so the bar is visible.
+ *
+ * Exported so server pages can pre-fetch initial rows and hand them
+ * straight to the client view (avoiding a second round-trip on hydrate).
  */
-async function loadMasteryForScope(opts: {
+export async function loadMasteryRows(opts: {
   studentId: string;
   syllabusId: string;
   currentWeek: number;
-}): Promise<ConceptMastery[]> {
+}): Promise<MasteryRow[]> {
   const { rows } = await pool.query<{
     concept_id: string; name: string; week_introduced: number;
     score: string | null; attempts: string | null;
@@ -47,12 +43,13 @@ async function loadMasteryForScope(opts: {
   }));
 }
 
-function tier(score: number): 'low' | 'mid' | 'high' {
-  if (score >= 70) return 'high';
-  if (score >= 35) return 'mid';
-  return 'low';
-}
-
+/**
+ * Server wrapper for surfaces that don't need client-side refresh
+ * (e.g. the student dashboard "This week" overview). Pages that DO
+ * need to refresh after each interaction (Practice) should fetch
+ * `loadMasteryRows` themselves and render `<MasteryPanelView>` inside
+ * a client wrapper that owns state.
+ */
 export default async function MasteryPanel({
   studentId,
   syllabusId,
@@ -66,54 +63,12 @@ export default async function MasteryPanel({
   focusConceptId?: string | null;
   label?: string;
 }) {
-  const concepts = await loadMasteryForScope({ studentId, syllabusId, currentWeek });
-
-  const totalAttempts = concepts.reduce((s, c) => s + c.attempts, 0);
-  const avgScore =
-    concepts.length > 0
-      ? Math.round(concepts.reduce((s, c) => s + c.score, 0) / concepts.length)
-      : 0;
-  const focusConcept = focusConceptId
-    ? concepts.find(c => c.concept_id === focusConceptId)
-    : null;
-
+  const concepts = await loadMasteryRows({ studentId, syllabusId, currentWeek });
   return (
-    <aside className="mastery-panel">
-      <div className="mastery-header">{label}</div>
-      <div className="mastery-summary">
-        {totalAttempts === 0 ? (
-          'Start practicing — the AI will focus on whichever concept you need most.'
-        ) : (
-          <>
-            Avg <strong>{avgScore}/100</strong> across {concepts.length} concepts.
-            {focusConcept && (
-              <>
-                {' '}Now focusing on <span className="focus-name">{focusConcept.name}</span>.
-              </>
-            )}
-          </>
-        )}
-      </div>
-
-      {concepts.length === 0 ? (
-        <div className="muted small">No concepts in this week&apos;s scope.</div>
-      ) : (
-        concepts.map(c => {
-          const t = tier(c.score);
-          const isFocus = c.concept_id === focusConceptId;
-          return (
-            <div key={c.concept_id} className={`mastery-row ${t}${isFocus ? ' focus' : ''}`}>
-              <div className="mastery-label">
-                <span className="name">{c.name}</span>
-                <span className="pct">{Math.round(c.score)}%</span>
-              </div>
-              <div className="mastery-bar-bg">
-                <div className="mastery-bar" style={{ width: `${Math.max(2, c.score)}%` }} />
-              </div>
-            </div>
-          );
-        })
-      )}
-    </aside>
+    <MasteryPanelView
+      concepts={concepts}
+      focusConceptId={focusConceptId}
+      label={label}
+    />
   );
 }
