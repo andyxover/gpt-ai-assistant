@@ -101,7 +101,7 @@ export default function UploadForm({ classes }: { classes: ClassOpt[] }) {
         <button type="submit" disabled={pending} className="btn">
           {pending ? 'Parsing…' : 'Parse & save'}
         </button>
-        <span className="mono small dim">~20-40s, ~4¢ per syllabus</span>
+        <span className="mono small dim">~30-90s, ~5-15¢ per syllabus</span>
       </div>
 
       {progress && !err && (

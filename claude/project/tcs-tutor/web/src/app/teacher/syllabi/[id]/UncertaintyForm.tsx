@@ -28,7 +28,7 @@ export default function UncertaintyForm(props: {
       setErr('Type at least one answer before saving.');
       return;
     }
-    setMsg(`Re-parsing the syllabus with your ${filled} clarification${filled === 1 ? '' : 's'}… (~20-40s)`);
+    setMsg(`Re-parsing the syllabus with your ${filled} clarification${filled === 1 ? '' : 's'}… (~30-90s)`);
     startTransition(async () => {
       const res = await clarifySyllabus({
         syllabusId: props.syllabusId,

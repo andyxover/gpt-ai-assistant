@@ -92,10 +92,15 @@ export async function parseSyllabus(rawText: string): Promise<ParseSyllabusResul
   if (!rawText || rawText.trim().length < 50) {
     throw new Error('Syllabus text is empty or too short (minimum 50 chars).');
   }
+  // A full-year syllabus (36 weeks × ~5-8 atomic concepts each + assessments
+  // section) can run 8-12K output tokens of JSON. 4096 was truncating
+  // mid-string on Grade 7 English Social Studies. 16K leaves headroom for
+  // longer overviews without inflating cost on short ones (Anthropic only
+  // charges for actual output tokens emitted, not the cap).
   const result = await askJSON<ParsedScope>({
     system: SYSTEM_PROMPT,
     user: USER_PROMPT_TEMPLATE.replace('{{SYLLABUS}}', rawText.trim()),
-    maxTokens: 4096,
+    maxTokens: 16384,
   });
   return { scope: result.data, usage: result.usage, model: result.model };
 }

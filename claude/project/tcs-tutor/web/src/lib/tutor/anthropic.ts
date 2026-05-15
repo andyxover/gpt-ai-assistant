@@ -43,6 +43,18 @@ export async function askJSON<T = unknown>(opts: {
     .map(b => b.text)
     .join('');
 
+  // Detect truncation BEFORE trying to parse — Claude hit max_tokens and
+  // the JSON is cut mid-string. The vague "unparseable JSON" error this
+  // used to produce sent us hunting for the wrong root cause on long
+  // syllabi. Surface it explicitly with a hint to raise maxTokens.
+  if (response.stop_reason === 'max_tokens') {
+    throw new Error(
+      `Claude response was truncated at max_tokens (${opts.maxTokens ?? 4096}). ` +
+      `Output had ${response.usage.output_tokens} tokens. ` +
+      `Raise maxTokens on this call site, or shorten the input.`,
+    );
+  }
+
   const start = raw.indexOf('{');
   const end = raw.lastIndexOf('}');
   if (start < 0 || end <= start) {
