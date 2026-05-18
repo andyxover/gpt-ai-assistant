@@ -46,13 +46,8 @@ async function extractPdf(buf: Buffer): Promise<string> {
   try {
     const { extractText, getDocumentProxy } = await import('unpdf');
     const pdf = await getDocumentProxy(new Uint8Array(buf));
-    const result = await extractText(pdf, { mergePages: true });
-    // mergePages: true returns { text: string, totalPages: number }
-    const text = typeof result.text === 'string'
-      ? result.text
-      : Array.isArray(result.text)
-        ? result.text.join('\n')
-        : '';
+    // With mergePages: true the lib returns { text: string, totalPages: number }
+    const { text } = await extractText(pdf, { mergePages: true });
 
     if (!text.trim()) {
       throw new Error(
