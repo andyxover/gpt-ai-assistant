@@ -36,18 +36,24 @@ export async function extractTextFromFile(file: File): Promise<string> {
 }
 
 async function extractPdf(buf: Buffer): Promise<string> {
+  // Why unpdf instead of pdf-parse:
+  // pdf-parse v2 wraps pdfjs-dist's default build, which references
+  // DOMMatrix (a browser-only Web API). On Vercel's Node serverless
+  // runtime that's not defined, and the import fails with
+  // "ReferenceError: DOMMatrix is not defined". unpdf is built for
+  // serverless: it uses pdfjs-dist's legacy build with the right
+  // Node-side shims, no DOM globals required.
   try {
-    // pdf-parse v2.x uses a class-based API. Convert Buffer → Uint8Array
-    // (the lib accepts Buffer, but being explicit makes it consistent
-    // across bundlers).
-    const { PDFParse } = await import('pdf-parse');
-    const parser = new PDFParse({ data: new Uint8Array(buf) });
-    const result = await parser.getText();
-    await parser.destroy().catch(() => undefined);
+    const { extractText, getDocumentProxy } = await import('unpdf');
+    const pdf = await getDocumentProxy(new Uint8Array(buf));
+    const result = await extractText(pdf, { mergePages: true });
+    // mergePages: true returns { text: string, totalPages: number }
+    const text = typeof result.text === 'string'
+      ? result.text
+      : Array.isArray(result.text)
+        ? result.text.join('\n')
+        : '';
 
-    // result.text is undefined for image-only / scanned PDFs.
-    // Combine with per-page text if the lib exposes it differently.
-    const text = (result as unknown as { text?: string }).text ?? '';
     if (!text.trim()) {
       throw new Error(
         'PDF appears to have no embedded text (likely a scanned image). OCR isn\'t wired up yet — paste the text or upload a text PDF.',
